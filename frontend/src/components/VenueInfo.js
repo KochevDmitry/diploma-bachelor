@@ -53,12 +53,22 @@ const VenueInfo = ({ venue, sessions, currentUser, onCreateSession, onJoinSessio
                   <p><strong>Статус:</strong> {session.status}</p>
                 </div>
                 {session.current_players < session.max_players && 
-                 !session.participants.includes(currentUser.id) && (
+                 currentUser &&
+                 !(session.participants || []).includes(currentUser.id) && (
                   <button 
                     onClick={() => handleJoin(session.id)}
                     className="join-btn"
                   >
                     Присоединиться
+                  </button>
+                )}
+                {session.current_players < session.max_players && 
+                 !currentUser && (
+                  <button 
+                    onClick={() => handleJoin(session.id)}
+                    className="join-btn"
+                  >
+                    Войти для присоединения
                   </button>
                 )}
               </div>

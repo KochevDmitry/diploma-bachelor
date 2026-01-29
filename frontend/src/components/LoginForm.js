@@ -27,7 +27,7 @@ const LoginForm = ({ onLogin, apiUrl }) => {
   };
 
   return (
-    <div className="login-container">
+    <div className="login-form-modal">
       <div className="login-form">
         <h1>SportApp</h1>
         <h2>{isLogin ? 'Вход' : 'Регистрация'}</h2>
