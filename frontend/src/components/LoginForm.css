@@ -83,3 +83,13 @@
 .toggle-btn:hover {
   color: #5568d3;
 }
+
+/* Стили для модального окна */
+.login-form-modal {
+  padding: 2rem;
+}
+
+.login-form-modal .login-form {
+  box-shadow: none;
+  max-width: 100%;
+}

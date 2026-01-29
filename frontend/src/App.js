@@ -17,6 +17,7 @@ function App() {
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [venueSessions, setVenueSessions] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Загрузка Yandex Maps API
   useEffect(() => {
@@ -111,15 +112,18 @@ function App() {
 
   const handleVenueSelect = (venue) => {
     setSelectedVenue(venue);
-    if (user) {
-      loadVenueSessions(venue.id);
-      if (socket) {
-        socket.emit('subscribe_venue', { venue_id: venue.id });
-      }
+    // Загружаем сессии даже без авторизации (для просмотра)
+    loadVenueSessions(venue.id);
+    if (user && socket) {
+      socket.emit('subscribe_venue', { venue_id: venue.id });
     }
   };
 
   const handleCreateSession = async (venueId, sportType, maxPlayers) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     try {
       const response = await axios.post(`${API_URL}/api/games`, {
         venue_id: venueId,
@@ -136,6 +140,10 @@ function App() {
   };
 
   const handleJoinSession = async (sessionId) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     try {
       const response = await axios.post(`${API_URL}/api/games/${sessionId}/join`, {
         user_id: user.id
@@ -148,17 +156,24 @@ function App() {
     }
   };
 
-  if (!user) {
-    return <LoginForm onLogin={handleLogin} apiUrl={API_URL} />;
-  }
+  const handleLoginSuccess = (userData, authToken) => {
+    handleLogin(userData, authToken);
+    setShowLoginModal(false);
+  };
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>SportApp - Поиск игроков</h1>
         <div className="user-info">
-          <span>Привет, {user.username}!</span>
-          <button onClick={handleLogout}>Выйти</button>
+          {user ? (
+            <>
+              <span>Привет, {user.username}!</span>
+              <button onClick={handleLogout}>Выйти</button>
+            </>
+          ) : (
+            <button onClick={() => setShowLoginModal(true)}>Войти</button>
+          )}
         </div>
       </header>
       <div className="app-content">
@@ -179,6 +194,14 @@ function App() {
           />
         )}
       </div>
+      {showLoginModal && (
+        <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowLoginModal(false)}>×</button>
+            <LoginForm onLogin={handleLoginSuccess} apiUrl={API_URL} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

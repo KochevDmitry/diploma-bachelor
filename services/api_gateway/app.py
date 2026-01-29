@@ -87,18 +87,28 @@ def auth_proxy(path):
 
 
 # Map Service routes
+@app.route('/api/map/venues', methods=['GET'])
+def map_venues_proxy():
+    """Проксирование запросов к Map Service для просмотра площадок (публичный)"""
+    return proxy_request(MAP_SERVICE_URL, '/api/map/venues', 'GET')
+
 @app.route('/api/map/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @verify_token
 def map_proxy(path):
-    """Проксирование запросов к Map Service"""
+    """Проксирование запросов к Map Service (требует авторизации для изменений)"""
     return proxy_request(MAP_SERVICE_URL, f'/api/map/{path}', request.method, request.get_json())
 
 
 # Game Session Service routes
+@app.route('/api/games/venue/<int:venue_id>', methods=['GET'])
+def game_venue_proxy(venue_id):
+    """Проксирование запросов к Game Session Service для просмотра сессий на площадке (публичный)"""
+    return proxy_request(GAME_SERVICE_URL, f'/api/games/venue/{venue_id}', 'GET')
+
 @app.route('/api/games/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @verify_token
 def game_proxy(path):
-    """Проксирование запросов к Game Session Service"""
+    """Проксирование запросов к Game Session Service (требует авторизации)"""
     return proxy_request(GAME_SERVICE_URL, f'/api/games/{path}', request.method, request.get_json())
 
 
