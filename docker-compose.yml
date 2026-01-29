@@ -221,7 +221,7 @@ services:
         REACT_APP_YANDEX_MAPS_API_KEY: ${YANDEX_MAPS_API_KEY:-your-api-key}
     container_name: sportapp_frontend
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - api_gateway
       - notification_service

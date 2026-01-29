@@ -151,9 +151,35 @@ def verify():
         return jsonify({'error': 'Invalid token'}), 401
 
 
+def create_default_user():
+    """Создание тестового пользователя по умолчанию, если его нет"""
+    with app.app_context():
+        # Проверка существования пользователей
+        if User.query.count() == 0:
+            # Хеширование пароля для тестового пользователя
+            password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            test_user = User(
+                username='admin',
+                email='admin@test.com',
+                password_hash=password_hash
+            )
+            
+            try:
+                db.session.add(test_user)
+                db.session.commit()
+                print("✅ Тестовый пользователь создан:")
+                print("   Username: admin")
+                print("   Password: admin123")
+            except Exception as e:
+                db.session.rollback()
+                print(f"⚠️  Не удалось создать тестового пользователя: {e}")
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        create_default_user()
     
     port = int(os.getenv('SERVICE_PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)
