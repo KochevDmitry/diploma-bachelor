@@ -74,7 +74,7 @@ def register():
         email=data['email'],
         password_hash=password_hash
     )
-    
+
     try:
         db.session.add(user)
         db.session.commit()
