@@ -96,3 +96,11 @@
   background-color: #f0f0f0;
   color: #333;
 }
+
+.custom-marker {
+  transition: transform 0.2s;
+}
+
+.custom-marker:hover {
+  transform: scale(1.2);
+}

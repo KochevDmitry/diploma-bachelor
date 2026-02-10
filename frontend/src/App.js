@@ -6,8 +6,8 @@ import VenueInfo from './components/VenueInfo';
 import LoginForm from './components/LoginForm';
 import './App.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost';
-const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost';
+const API_URL = process.env.REACT_APP_API_URL || '';
+const WS_URL = process.env.REACT_APP_WS_URL || '';
 const YANDEX_MAPS_API_KEY = process.env.REACT_APP_YANDEX_MAPS_API_KEY || '';
 
 function App() {
@@ -34,7 +34,7 @@ function App() {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       // Проверка токена
-      axios.get(`${API_URL}/auth/verify`)
+      axios.get(`${API_URL || ''}/auth/verify`)
         .then(response => {
           setUser(response.data.user);
         })
@@ -76,10 +76,12 @@ function App() {
 
   const loadVenues = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/map/venues`);
-      setVenues(response.data);
+      const base = API_URL || '';
+      const response = await axios.get(`${base}/api/map/venues`);
+      setVenues(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error loading venues:', error);
+      setVenues([]);
     }
   };
 

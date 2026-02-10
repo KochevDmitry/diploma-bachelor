@@ -68,7 +68,15 @@ def proxy_request(service_url, path, method='GET', data=None, headers=None):
         else:
             return jsonify({'error': 'Method not allowed'}), 405
         
-        return response.json(), response.status_code
+        try:
+            return response.json(), response.status_code
+        except ValueError:
+            # Ответ не JSON (пустое тело, HTML и т.д.)
+            return jsonify({
+                'error': 'Upstream service returned invalid response',
+                'status': response.status_code,
+                'detail': response.text[:200] if response.text else 'empty body'
+            }), response.status_code if 400 <= response.status_code < 600 else 502
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Service unavailable: {str(e)}'}), 503
 

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS venues (
     name VARCHAR(255) NOT NULL,
     address TEXT,
     sport_type VARCHAR(50), -- football, basketball, volleyball, etc.
-    location GEOGRAPHY(Point, 4326), -- PostGIS география для координат
+    location geometry(Point, 4326), -- PostGIS география для координат
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -55,3 +55,18 @@ CREATE INDEX IF NOT EXISTS game_sessions_venue_idx ON game_sessions(venue_id);
 CREATE INDEX IF NOT EXISTS game_sessions_status_idx ON game_sessions(status);
 CREATE INDEX IF NOT EXISTS session_participants_session_idx ON session_participants(session_id);
 CREATE INDEX IF NOT EXISTS session_participants_user_idx ON session_participants(user_id);
+
+INSERT INTO venues (name, address, sport_type, location) VALUES
+    ('Спортивный комплекс "Олимп"', 'Москва, ул. Ленинградский проспект, 31', 'football', 
+     ST_SetSRID(ST_MakePoint(37.537800, 55.788155), 4326)),
+    ('Футбольное поле "Спартак"', 'Москва, ул. Народного Ополчения, 2', 'football',
+     ST_SetSRID(ST_MakePoint(37.440262, 55.818351), 4326)),
+    ('Баскетбольная площадка "Динамо"', 'Москва, Ленинградский просп., 36', 'basketball',
+     ST_SetSRID(ST_MakePoint(37.559028, 55.790688), 4326)),
+    ('Теннисный корт "Лужники"', 'Москва, ул. Лужники, 24', 'tennis',
+     ST_SetSRID(ST_MakePoint(37.553308, 55.715551), 4326)),
+    ('Волейбольная площадка "Сокол"', 'Москва, ул. Волоколамское шоссе, 2', 'volleyball',
+     ST_SetSRID(ST_MakePoint(37.513900, 55.804700), 4326)),
+    ('Футбольное поле "Локомотив"', 'Москва, ул. Большая Черкизовская, 125', 'football',
+     ST_SetSRID(ST_MakePoint(37.740519, 55.815511), 4326))
+ON CONFLICT DO NOTHING;

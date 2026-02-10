@@ -216,9 +216,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: http://localhost
-        REACT_APP_WS_URL: http://localhost
-        REACT_APP_YANDEX_MAPS_API_KEY: ${YANDEX_MAPS_API_KEY:-your-api-key}
+        REACT_APP_API_URL: http://localhost:3000
+        REACT_APP_WS_URL: http://localhost:3000
+        REACT_APP_YANDEX_MAPS_API_KEY: ${YANDEX_MAPS_API_KEY:-4bfed143-303d-44eb-82f0-4f6b3acfada8}
     container_name: sportapp_frontend
     ports:
       - "3000:80"
