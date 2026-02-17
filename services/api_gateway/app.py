@@ -19,7 +19,7 @@ GAME_SERVICE_URL = os.getenv('GAME_SERVICE_URL', 'http://game_session_service:50
 NOTIFICATION_SERVICE_URL = os.getenv('NOTIFICATION_SERVICE_URL', 'http://notification_service:5004')
 
 # Маршруты, не требующие аутентификации
-PUBLIC_ROUTES = ['/auth/register', '/auth/login', '/health']
+PUBLIC_ROUTES = ['/auth/register', '/auth/login', '/api/auth/register', '/api/auth/login', '/health', '/api/map/venues', '/api/games/venue/', '/api/games/map']
 
 
 def verify_token(f):
@@ -47,6 +47,34 @@ def verify_token(f):
         
         return f(*args, **kwargs)
     return decorated
+
+
+@app.before_request
+def check_token():
+    """Проверка токена для защищенных маршрутов"""
+    for route in PUBLIC_ROUTES:
+        if request.path.startswith(route):
+            return  # Публичный маршрут
+    
+    # Для остальных маршрутов проверяем токен
+    token = None
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        try:
+            token = auth_header.split(' ')[1]  # Bearer <token>
+        except IndexError:
+            return jsonify({'error': 'Invalid token format'}), 401
+    
+    if not token:
+        return jsonify({'error': 'Token is missing'}), 401
+    
+    try:
+        data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+        request.current_user = data
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
 
 
 def proxy_request(service_url, path, method='GET', data=None, headers=None):
@@ -94,7 +122,14 @@ def auth_proxy(path):
     return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, request.get_json())
 
 
-# Map Service routes
+# API Auth Service routes (with /api prefix)
+@app.route('/api/auth/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def api_auth_proxy(path):
+    """Проксирование запросов к Auth Service (с /api префиксом)"""
+    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, request.get_json())
+
+
+
 @app.route('/api/map/venues', methods=['GET'])
 def map_venues_proxy():
     """Проксирование запросов к Map Service для просмотра площадок (публичный)"""
@@ -112,6 +147,23 @@ def map_proxy(path):
 def game_venue_proxy(venue_id):
     """Проксирование запросов к Game Session Service для просмотра сессий на площадке (публичный)"""
     return proxy_request(GAME_SERVICE_URL, f'/api/games/venue/{venue_id}', 'GET')
+
+@app.route('/api/games/map', methods=['GET'])
+def game_map_proxy():
+    """Проксирование запросов к Game Session Service для получения сессий на карте (публичный)"""
+    return proxy_request(GAME_SERVICE_URL, '/api/games/map', 'GET')
+
+@app.route('/api/games', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@verify_token
+def game_root_proxy():
+    """Проксирование запросов к Game Session Service корневому эндпоинту"""
+    if request.method == 'POST':
+        # Для POST запросов явно добавляем creator_id
+        data = request.get_json() or {}
+        data['creator_id'] = 2  # Временно используем фиксированный user_id для тестирования
+        return proxy_request(GAME_SERVICE_URL, '/api/games', request.method, data)
+    else:
+        return proxy_request(GAME_SERVICE_URL, '/api/games', request.method, request.get_json())
 
 @app.route('/api/games/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @verify_token

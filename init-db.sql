@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS game_sessions (
     max_players INTEGER DEFAULT 10,
     current_players INTEGER DEFAULT 1,
     status VARCHAR(20) DEFAULT 'waiting', -- waiting, full, started, finished
+    latitude FLOAT,
+    longitude FLOAT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP,
     finished_at TIMESTAMP

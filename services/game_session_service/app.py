@@ -54,12 +54,14 @@ class GameSession(db.Model):
     __tablename__ = 'game_sessions'
     
     id = db.Column(db.Integer, primary_key=True)
-    venue_id = db.Column(db.Integer, db.ForeignKey('venues.id'), nullable=False)
-    creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    venue_id = db.Column(db.Integer, nullable=True)  # Ссылка на Venue ID из map_service
+    creator_id = db.Column(db.Integer, nullable=False)  # Ссылка на User ID из auth_service
     sport_type = db.Column(db.String(50), nullable=False)
     max_players = db.Column(db.Integer, default=10)
     current_players = db.Column(db.Integer, default=1)
     status = db.Column(db.String(20), default='waiting')  # waiting, full, started, finished
+    latitude = db.Column(db.Float, nullable=True)  # Координаты для произвольных событий
+    longitude = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     started_at = db.Column(db.DateTime)
     finished_at = db.Column(db.DateTime)
@@ -76,6 +78,8 @@ class GameSession(db.Model):
             'max_players': self.max_players,
             'current_players': self.current_players,
             'status': self.status,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
             'participants': participants,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None
@@ -140,6 +144,31 @@ def get_venue_sessions(venue_id):
     return jsonify(result), 200
 
 
+@app.route('/api/games/map', methods=['GET'])
+def get_map_sessions():
+    """Получение всех активных сессий с координатами для карты"""
+    # Получаем сессии с координатами (не привязанные к venue или с venue)
+    sessions = GameSession.query.filter(
+        GameSession.status == 'waiting',
+        db.or_(
+            GameSession.latitude.isnot(None),
+            GameSession.venue_id.isnot(None)
+        )
+    ).all()
+    
+    result = []
+    for session in sessions:
+        session_dict = session.to_dict()
+        # Если сессия привязана к venue, добавим координаты venue
+        if session.venue_id and not session.latitude:
+            # Здесь нужно получить координаты venue из другого сервиса
+            # Пока что пропустим, frontend должен сам знать координаты venues
+            pass
+        result.append(session_dict)
+    
+    return jsonify(result), 200
+
+
 @app.route('/api/games/<int:session_id>', methods=['GET'])
 def get_session(session_id):
     """Получение информации о сессии"""
@@ -152,16 +181,22 @@ def create_session():
     """Создание новой игровой сессии"""
     data = request.get_json()
     
-    if not data or not data.get('venue_id') or not data.get('creator_id'):
-        return jsonify({'error': 'Missing required fields: venue_id, creator_id'}), 400
+    if not data or not data.get('creator_id'):
+        return jsonify({'error': 'Missing required field: creator_id'}), 400
+    
+    # Проверяем, что либо venue_id, либо координаты указаны
+    if not data.get('venue_id') and (not data.get('latitude') or not data.get('longitude')):
+        return jsonify({'error': 'Either venue_id or latitude/longitude coordinates are required'}), 400
     
     session = GameSession(
-        venue_id=data['venue_id'],
+        venue_id=data.get('venue_id'),
         creator_id=data['creator_id'],
         sport_type=data.get('sport_type', 'football'),
         max_players=data.get('max_players', 10),
         current_players=1,
-        status='waiting'
+        status='waiting',
+        latitude=data.get('latitude'),
+        longitude=data.get('longitude')
     )
     
     try:
@@ -172,10 +207,11 @@ def create_session():
         set_session_participants(session.id, [data['creator_id']])
         
         # Очистка кеша
-        redis_client.delete(f'venue:{data["venue_id"]}:sessions')
+        if data.get('venue_id'):
+            redis_client.delete(f'venue:{data["venue_id"]}:sessions')
         
         # Отправка уведомления через Celery
-        notify_new_session.delay(session.id, data['venue_id'])
+        notify_new_session.delay(session.id, data.get('venue_id'))
         
         return jsonify(session.to_dict()), 201
     except Exception as e:

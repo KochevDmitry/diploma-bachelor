@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import MapComponent from './components/MapComponent';
 import VenueInfo from './components/VenueInfo';
 import LoginForm from './components/LoginForm';
+import CreateEventForm from './components/CreateEventForm';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -16,6 +17,7 @@ function App() {
   const [venues, setVenues] = useState([]);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [venueSessions, setVenueSessions] = useState([]);
+  const [mapEvents, setMapEvents] = useState([]);
   const [socket, setSocket] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -72,6 +74,7 @@ function App() {
   // Загрузка площадок
   useEffect(() => {
     loadVenues();
+    loadMapEvents();
   }, []);
 
   const loadVenues = async () => {
@@ -91,6 +94,16 @@ function App() {
       setVenueSessions(response.data);
     } catch (error) {
       console.error('Error loading venue sessions:', error);
+    }
+  };
+
+  const loadMapEvents = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/games/map`);
+      setMapEvents(response.data);
+    } catch (error) {
+      console.error('Error loading map events:', error);
+      setMapEvents([]);
     }
   };
 
@@ -158,6 +171,42 @@ function App() {
     }
   };
 
+  const handleCreateMapEvent = async (eventData) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    try {
+      const response = await axios.post(`${API_URL}/api/games`, eventData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      loadMapEvents(); // Перезагружаем события на карте
+      return response.data;
+    } catch (error) {
+      console.error('Error creating map event:', error);
+      throw error;
+    }
+  };
+
+  const handleJoinMapEvent = async (eventId) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    try {
+      const response = await axios.post(`${API_URL}/api/games/${eventId}/join`, {
+        user_id: user.id
+      });
+      loadMapEvents(); // Перезагружаем события на карте
+      return response.data;
+    } catch (error) {
+      console.error('Error joining map event:', error);
+      throw error;
+    }
+  };
+
   const handleLoginSuccess = (userData, authToken) => {
     handleLogin(userData, authToken);
     setShowLoginModal(false);
@@ -182,8 +231,13 @@ function App() {
         <div className="map-container">
           <MapComponent
             venues={venues}
+            events={mapEvents}
             onVenueSelect={handleVenueSelect}
+            onEventSelect={() => {}} // Пока не используется
+            onCreateEvent={handleCreateMapEvent}
+            onJoinEvent={handleJoinMapEvent}
             yandexApiKey={YANDEX_MAPS_API_KEY}
+            currentUser={user}
           />
         </div>
         {selectedVenue && (
