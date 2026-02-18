@@ -7,9 +7,18 @@ import requests
 import jwt
 import os
 from functools import wraps
+import logging
 
 app = Flask(__name__)
 CORS(app)
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+logger.info("API Gateway starting...")
 
 # Конфигурация
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
@@ -112,6 +121,7 @@ def proxy_request(service_url, path, method='GET', data=None, headers=None):
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    logger.info("Health check called")
     return jsonify({'status': 'ok', 'service': 'api_gateway'}), 200
 
 
@@ -157,10 +167,16 @@ def game_map_proxy():
 @verify_token
 def game_root_proxy():
     """Проксирование запросов к Game Session Service корневому эндпоинту"""
+    logger.debug(f"game_root_proxy called with method: {request.method}")
     if request.method == 'POST':
-        # Для POST запросов явно добавляем creator_id
+        # Для POST запросов всегда добавляем/переопределяем creator_id из токена для безопасности
         data = request.get_json() or {}
-        data['creator_id'] = 2  # Временно используем фиксированный user_id для тестирования
+        logger.debug(f"Request data before: {data}")
+        logger.debug(f"Current user: {request.current_user}")
+        if hasattr(request, 'current_user') and 'user_id' in request.current_user:
+            data['creator_id'] = request.current_user['user_id']
+            logger.info(f"Added creator_id: {data['creator_id']} from token")
+        logger.debug(f"Final data to send: {data}")
         return proxy_request(GAME_SERVICE_URL, '/api/games', request.method, data)
     else:
         return proxy_request(GAME_SERVICE_URL, '/api/games', request.method, request.get_json())
@@ -169,7 +185,19 @@ def game_root_proxy():
 @verify_token
 def game_proxy(path):
     """Проксирование запросов к Game Session Service (требует авторизации)"""
-    return proxy_request(GAME_SERVICE_URL, f'/api/games/{path}', request.method, request.get_json())
+    data = request.get_json()
+    
+    # Для POST запросов к join операции, пересекаем user_id из токена
+    if request.method == 'POST' and '/join' in path:
+        if data is None:
+            data = {}
+        app.logger.debug(f"JOIN request for path: {path}")
+        app.logger.debug(f"  request user_id: {data.get('user_id')}")
+        if hasattr(request, 'current_user') and 'user_id' in request.current_user:
+            data['user_id'] = request.current_user['user_id']
+            app.logger.info(f"  ✅ Overrided user_id to: {data['user_id']} from token")
+    
+    return proxy_request(GAME_SERVICE_URL, f'/api/games/{path}', request.method, data)
 
 
 # Notification Service routes (WebSocket будет обрабатываться отдельно)

@@ -177,12 +177,13 @@ function App() {
       return;
     }
     try {
-      const response = await axios.post(`${API_URL}/api/games`, eventData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      loadMapEvents(); // Перезагружаем события на карте
+      // API Gateway будет добавлять creator_id из токена, но мы отправляем все данные
+      const response = await axios.post(`${API_URL}/api/games`, eventData);
+      console.log('Event created:', response.data);
+      // Перезагружаем события на карте после небольшой задержки
+      setTimeout(() => {
+        loadMapEvents();
+      }, 500);
       return response.data;
     } catch (error) {
       console.error('Error creating map event:', error);
@@ -199,7 +200,11 @@ function App() {
       const response = await axios.post(`${API_URL}/api/games/${eventId}/join`, {
         user_id: user.id
       });
-      loadMapEvents(); // Перезагружаем события на карте
+      console.log('Joined event:', response.data);
+      // Перезагружаем события на карте после небольшой задержки
+      setTimeout(() => {
+        loadMapEvents();
+      }, 500);
       return response.data;
     } catch (error) {
       console.error('Error joining map event:', error);
