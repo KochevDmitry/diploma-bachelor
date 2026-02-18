@@ -17,6 +17,7 @@ const MapComponent = ({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createFormCoords, setCreateFormCoords] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const mouseDownRef = useRef(null); // Отслеживаем, был ли это drag или клик
 
   useEffect(() => {
     console.log('=== MapComponent Debug ===');
@@ -80,8 +81,21 @@ const MapComponent = ({
       map.addChild(controls);
 
       // Обработчик клика для создания события
-      // Используем встроенный в страницу обработчик на контейнер
       const handleMapClick = (e) => {
+        // Проверяем, был ли это drag операция
+        if (mouseDownRef.current) {
+          const dx = e.clientX - mouseDownRef.current.x;
+          const dy = e.clientY - mouseDownRef.current.y;
+          const dragDistance = Math.sqrt(dx * dx + dy * dy);
+          
+          // Если пользователь передвинул мышь больше чем на 5px - это drag, не клик
+          if (dragDistance > 5) {
+            console.log('Drag detected, ignoring click');
+            mouseDownRef.current = null;
+            return;
+          }
+        }
+
         // Находим был ли клик на маркере или на пустой части карты
         const targetElement = e.target;
         
@@ -91,7 +105,7 @@ const MapComponent = ({
                         targetElement.closest('.event-marker') ||
                         targetElement.closest('.venue-marker');
         
-        if (!isMarker) {
+        if (!isMarker && !targetElement.closest('button') && !targetElement.closest('a')) {
           // Используем центр карты с некторым смещением для демонстрации
           const lat = 55.755819 + (Math.random() - 0.5) * 0.05 * (Math.random() > 0.5 ? 1 : -1);
           const lon = 37.617644 + (Math.random() - 0.5) * 0.05 * (Math.random() > 0.5 ? 1 : -1);
@@ -101,12 +115,17 @@ const MapComponent = ({
           setShowCreateForm(true);
         }
       };
+
+      const handleMouseDown = (e) => {
+        mouseDownRef.current = { x: e.clientX, y: e.clientY };
+      };
       
-      // Регистрируем обработчик после небольшой задержки для стабильности
+      // Регистрируем обработчики после небольшой задержки для стабильности
       setTimeout(() => {
         if (mapRef.current) {
-          mapRef.current.addEventListener('click', handleMapClick, true);
-          console.log('Map click handler registered');
+          mapRef.current.addEventListener('mousedown', handleMouseDown);
+          mapRef.current.addEventListener('click', handleMapClick);
+          console.log('Map click handlers registered');
         }
       }, 500);
 
@@ -169,7 +188,8 @@ const MapComponent = ({
         </div>
       `;
 
-      markerElement.onclick = () => {
+      markerElement.onclick = (e) => {
+        e.stopPropagation(); // Предотвращаем срабатывание обработчика карты
         console.log('Venue marker clicked:', venue.name);
         onVenueSelect(venue);
       };
