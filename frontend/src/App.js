@@ -77,6 +77,13 @@ function App() {
     loadMapEvents();
   }, []);
 
+  // Перезагрузка событий после входа в аккаунт
+  useEffect(() => {
+    if (user) {
+      loadMapEvents();
+    }
+  }, [user]);
+
   const loadVenues = async () => {
     try {
       const base = API_URL || '';

@@ -190,6 +190,7 @@ const MapComponent = ({
 
       markerElement.onclick = (e) => {
         e.stopPropagation(); // Предотвращаем срабатывание обработчика карты
+        mouseDownRef.current = null; // Очищаем флаг
         console.log('Venue marker clicked:', venue.name);
         onVenueSelect(venue);
       };
@@ -251,7 +252,9 @@ const MapComponent = ({
 
       markerElement.onclick = (e) => {
         e.stopPropagation(); // Предотвращаем клик на карте
+        mouseDownRef.current = null; // Очищаем флаг
         console.log('Event marker clicked:', event.id);
+        console.log('Setting selected event:', event);
         setSelectedEvent(event);
       };
 

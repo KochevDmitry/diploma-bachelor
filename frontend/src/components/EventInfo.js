@@ -2,8 +2,10 @@ import React from 'react';
 import './EventInfo.css';
 
 const EventInfo = ({ event, currentUser, onJoinEvent, onClose }) => {
+  console.log('EventInfo opened with event:', event);
+  
   const isCreator = currentUser && event.creator_id === currentUser.id;
-  const isParticipant = currentUser && event.participants.includes(currentUser.id);
+  const isParticipant = currentUser && event.participants && event.participants.includes(currentUser.id);
   const canJoin = !isCreator && !isParticipant && event.status === 'waiting';
 
   const handleJoin = async () => {
