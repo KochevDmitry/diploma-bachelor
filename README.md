@@ -279,11 +279,8 @@ VALUES (
 );
 ```
 ### Удаление всех площадок
-```sql
-docker-compose exec db psql -U postgres -d diploma_db < /dev/stdin << EOF
-TRUNCATE TABLE session_participants CASCADE;
-TRUNCATE TABLE game_sessions CASCADE;
-EOF
+```bash
+docker-compose exec postgres psql -U sportapp_user -d sportapp_db -c "TRUNCATE TABLE session_participants CASCADE; TRUNCATE TABLE game_sessions CASCADE;"
 ```
 
 ## 🐛 Troubleshooting
