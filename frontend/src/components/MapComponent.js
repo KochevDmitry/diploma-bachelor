@@ -14,6 +14,8 @@ const MapComponent = ({
 }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]); // Отслеживаем маркеры для очистки
+  const [mapReady, setMapReady] = useState(false); // State флаг для готовности карты
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createFormCoords, setCreateFormCoords] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -130,10 +132,12 @@ const MapComponent = ({
       }, 500);
 
       mapInstanceRef.current = map;
-      console.log('Map created successfully!');
+      console.log('Map created successfully! venues:', venues?.length || 0, 'events:', events?.length || 0);
+      setMapReady(true); // 🗺️ Флаг что карта готова
 
-      // Добавляем маркеры
-      addMarkers(map, venues);
+      // Добавляем маркеры с текущими значениями
+      console.log('🗺️  Adding markers after map init');
+      addMarkers(map, venues, events);
     };
 
     initMap().catch(err => {
@@ -150,15 +154,29 @@ const MapComponent = ({
 
   // Обновление маркеров при изменении venues или events
   useEffect(() => {
-    if (mapInstanceRef.current) {
-      console.log('Updating markers, venues count:', venues.length, 'events count:', events?.length || 0);
+    console.log('🗺️  venues/events changed useEffect');
+    console.log('  mapReady:', mapReady, 'venues:', venues?.length || 0, 'events:', events?.length || 0);
+    
+    if (mapReady && mapInstanceRef.current) {
+      console.log('🗺️  Map ready, updating markers');
       addMarkers(mapInstanceRef.current, venues, events);
+    } else {
+      console.warn('⚠️  Map not ready yet (mapReady:', mapReady, ')');
     }
-  }, [venues, events]);
+  }, [venues, events, mapReady]);
 
   // Функция добавления маркеров
   const addMarkers = (map, venuesList, eventsList = []) => {
-    console.log('Adding markers for venues:', venuesList, 'and events:', eventsList);
+    console.log('🗺️  addMarkers called');
+    
+    // Очищаем старые маркеры
+    console.log('  Removing', markersRef.current.length, 'old markers');
+    markersRef.current.forEach(marker => {
+      map.removeChild(marker);
+    });
+    markersRef.current = [];
+
+    console.log('Adding markers for venues:', venuesList.length, 'and events:', eventsList.length);
 
     // Добавляем маркеры для venues
     venuesList.forEach((venue, index) => {
@@ -204,31 +222,35 @@ const MapComponent = ({
       );
 
       map.addChild(marker);
+      markersRef.current.push(marker);
     });
 
     // Добавляем маркеры для events
     eventsList.forEach((event, index) => {
+      console.log(`Processing event ${index}:`, event);
       let lat, lon;
 
       if (event.latitude && event.longitude) {
         lat = event.latitude;
         lon = event.longitude;
+        console.log(`  ✅ Has direct coordinates: [${lon}, ${lat}]`);
       } else if (event.venue_id) {
         // Если событие привязано к venue, найдем координаты venue
         const venue = venuesList.find(v => v.id === event.venue_id);
         if (venue && venue.coordinates) {
           lat = venue.coordinates.lat;
           lon = venue.coordinates.lon;
+          console.log(`  ✅ Found venue ${event.venue_id} coordinates: [${lon}, ${lat}]`);
         } else {
-          console.warn(`Event ${event.id} has venue_id but venue coordinates not found`);
+          console.warn(`  ⚠️ Event ${event.id} has venue_id ${event.venue_id} but venue coordinates not found`);
           return;
         }
       } else {
-        console.warn(`Event ${event.id} has no coordinates`);
+        console.warn(`  ⚠️ Event ${event.id} has no coordinates:`, { latitude: event.latitude, longitude: event.longitude, venue_id: event.venue_id });
         return;
       }
 
-      console.log(`Adding event marker for ${event.sport_type} at [${lon}, ${lat}]`);
+      console.log(`📍 Adding event marker for ${event.sport_type} at [${lon}, ${lat}]`);
 
       // Создаём HTML элемент для маркера события
       const markerElement = document.createElement('div');
@@ -267,6 +289,7 @@ const MapComponent = ({
       );
 
       map.addChild(marker);
+      markersRef.current.push(marker);
     });
   };
 

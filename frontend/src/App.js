@@ -13,7 +13,9 @@ const YANDEX_MAPS_API_KEY = process.env.REACT_APP_YANDEX_MAPS_API_KEY || '';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [accessToken, setAccessToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [venues, setVenues] = useState([]);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [venueSessions, setVenueSessions] = useState([]);
@@ -31,21 +33,119 @@ function App() {
     }
   }, []);
 
-  // Инициализация axios с токеном
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Проверка токена
-      axios.get(`${API_URL || ''}/auth/verify`)
-        .then(response => {
-          setUser(response.data.user);
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-          setToken(null);
-        });
+  // Функции logout (определяем перед использованием в интерцепторе)
+  const handleLogout = () => {
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    delete axios.defaults.headers.common['Authorization'];
+    if (socket) {
+      socket.close();
+      setSocket(null);
     }
-  }, [token]);
+  };
+
+  // Setup axios перехватчик для автоматического обновления токена
+  useEffect(() => {
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const storedRefreshToken = localStorage.getItem('refreshToken');
+        if (error.response?.status === 401 && storedRefreshToken) {
+          try {
+            // Пытаемся обновить токен
+            const refreshResponse = await axios.post(
+              `${API_URL || ''}/auth/refresh`,
+              { refreshToken: storedRefreshToken }
+            );
+            
+            const newAccessToken = refreshResponse.data.accessToken;
+            localStorage.setItem('accessToken', newAccessToken);
+            setAccessToken(newAccessToken);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+            
+            // Повторяем оригинальный запрос с новым токеном
+            error.config.headers['Authorization'] = `Bearer ${newAccessToken}`;
+            return axios(error.config);
+          } catch (refreshError) {
+            // Refresh не удался, очищаем все
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            setUser(null);
+            setAccessToken(null);
+            setRefreshToken(null);
+            delete axios.defaults.headers.common['Authorization'];
+            if (socket) {
+              socket.close();
+              setSocket(null);
+            }
+            return Promise.reject(refreshError);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [socket]);
+
+  // Инициализация сессии при монтировании компонента
+  useEffect(() => {
+    const initializeSession = async () => {
+      const storedAccessToken = localStorage.getItem('accessToken');
+      const storedRefreshToken = localStorage.getItem('refreshToken');
+
+      if (storedAccessToken && storedRefreshToken) {
+        setAccessToken(storedAccessToken);
+        setRefreshToken(storedRefreshToken);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedAccessToken}`;
+
+        try {
+          // Проверяем валидность токена
+          const response = await axios.post(`${API_URL || ''}/auth/verify`);
+          console.log('✅ Токен валидный, пользователь восстановлен:', response.data.user.username);
+          setUser(response.data.user);
+          setIsInitializing(false);
+          return;
+        } catch (error) {
+          console.warn('⚠️ Access token истек, пытаемся обновить...');
+          // Токен истек, пытаемся обновить
+          try {
+            const refreshResponse = await axios.post(
+              `${API_URL || ''}/auth/refresh`,
+              { refreshToken: storedRefreshToken }
+            );
+            
+            const newAccessToken = refreshResponse.data.accessToken;
+            localStorage.setItem('accessToken', newAccessToken);
+            setAccessToken(newAccessToken);
+            setRefreshToken(storedRefreshToken);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+            console.log('✅ Токен обновлен, пользователь восстановлен:', refreshResponse.data.user.username);
+            setUser(refreshResponse.data.user);
+            setIsInitializing(false);
+            return;
+          } catch (refreshError) {
+            console.error('❌ Оба токена невалидны');
+            // Оба токена невалидны
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            delete axios.defaults.headers.common['Authorization'];
+          }
+        }
+      } else {
+        console.log('ℹ️ Токены не найдены в localStorage');
+      }
+
+      setIsInitializing(false);
+    };
+
+    initializeSession();
+  }, []);
 
   // Подключение к WebSocket
   useEffect(() => {
@@ -71,26 +171,38 @@ function App() {
     }
   }, [user, selectedVenue]);
 
-  // Загрузка площадок
+  // Загрузка площадок при монтировании
   useEffect(() => {
+    console.log('� MOUNT useEffect: начальная загрузка площадок');
     loadVenues();
-    loadMapEvents();
   }, []);
 
-  // Перезагрузка событий после входа в аккаунт
+  // Загрузка событий когда инициализация завершена
   useEffect(() => {
-    if (user) {
+    console.log('🔄 INIT_CHECK useEffect: isInitializing =', isInitializing);
+    if (!isInitializing) {
+      console.log('✅ Инициализация завершена, загружаем события. User:', user?.username);
       loadMapEvents();
     }
-  }, [user]);
+  }, [isInitializing]);
+
+  // Перезагрузка событий когда пользователь входит/выходит
+  useEffect(() => {
+    if (user && !isInitializing) {
+      console.log('👤 User вошел:', user.username, ', перезагружаем события');
+      loadMapEvents();
+    }
+  }, [user?.id, isInitializing]);
 
   const loadVenues = async () => {
     try {
+      console.log('📍 loadVenues: начинаем загрузку');
       const base = API_URL || '';
       const response = await axios.get(`${base}/api/map/venues`);
+      console.log('📍 loadVenues: успешно, количество:', Array.isArray(response.data) ? response.data.length : 0);
       setVenues(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error loading venues:', error);
+      console.error('❌ loadVenues ошибка:', error.response?.status, error.message);
       setVenues([]);
     }
   };
@@ -106,30 +218,34 @@ function App() {
 
   const loadMapEvents = async () => {
     try {
+      console.log('📍 loadMapEvents: начинаем загрузку');
       const response = await axios.get(`${API_URL}/api/games/map`);
+      console.log('📍 loadMapEvents: успешно загружены', response.data);
       setMapEvents(response.data);
     } catch (error) {
-      console.error('Error loading map events:', error);
+      console.error('❌ loadMapEvents ошибка:', error.response?.status, error.message);
       setMapEvents([]);
     }
   };
 
-  const handleLogin = (userData, authToken) => {
+  const handleLogin = (userData, newAccessToken, newRefreshToken) => {
+    console.log('🔐 handleLogin called');
+    console.log('  userData:', userData);
+    console.log('  newAccessToken:', newAccessToken ? '(present)' : 'MISSING');
+    console.log('  newRefreshToken:', newRefreshToken ? '(present)' : 'MISSING');
+    
     setUser(userData);
-    setToken(authToken);
-    localStorage.setItem('token', authToken);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-    if (socket) {
-      socket.close();
-      setSocket(null);
-    }
+    setAccessToken(newAccessToken);
+    setRefreshToken(newRefreshToken);
+    
+    localStorage.setItem('accessToken', newAccessToken);
+    localStorage.setItem('refreshToken', newRefreshToken);
+    
+    console.log('✅ localStorage after save:');
+    console.log('  accessToken:', localStorage.getItem('accessToken') ? '(saved)' : 'NOT SAVED');
+    console.log('  refreshToken:', localStorage.getItem('refreshToken') ? '(saved)' : 'NOT SAVED');
+    
+    axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
   };
 
   const handleVenueSelect = (venue) => {
@@ -219,9 +335,15 @@ function App() {
     }
   };
 
-  const handleLoginSuccess = (userData, authToken) => {
-    handleLogin(userData, authToken);
+  const handleLoginSuccess = (userData, newAccessToken, newRefreshToken) => {
+    console.log('🔐 handleLoginSuccess: вход успешен, загружаем события');
+    handleLogin(userData, newAccessToken, newRefreshToken);
     setShowLoginModal(false);
+    // Явно загружаем события после входа
+    setTimeout(() => {
+      console.log('📍 После входа: загружаем события');
+      loadMapEvents();
+    }, 100);
   };
 
   return (

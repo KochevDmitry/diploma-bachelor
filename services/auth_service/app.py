@@ -19,7 +19,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600))
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 1800))  # 30 минут
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = int(os.getenv('JWT_REFRESH_TOKEN_EXPIRES', 604800))  # 7 дней
 
 db = SQLAlchemy(app)
 
@@ -79,13 +80,15 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        # Генерация JWT токена
-        token = generate_token(user)
+        # Генерация Access и Refresh токенов
+        access_token = generate_access_token(user)
+        refresh_token = generate_refresh_token(user)
         
         return jsonify({
             'message': 'User registered successfully',
             'user': user.to_dict(),
-            'token': token
+            'accessToken': access_token,
+            'refreshToken': refresh_token
         }), 201
     except Exception as e:
         db.session.rollback()
@@ -109,18 +112,20 @@ def login():
     if not bcrypt.checkpw(data['password'].encode('utf-8'), user.password_hash.encode('utf-8')):
         return jsonify({'error': 'Invalid credentials'}), 401
     
-    # Генерация JWT токена
-    token = generate_token(user)
+    # Генерация Access и Refresh токенов
+    access_token = generate_access_token(user)
+    refresh_token = generate_refresh_token(user)
     
     return jsonify({
         'message': 'Login successful',
         'user': user.to_dict(),
-        'token': token
+        'accessToken': access_token,
+        'refreshToken': refresh_token
     }), 200
 
 
-def generate_token(user):
-    """Генерация JWT токена"""
+def generate_access_token(user):
+    """Генерация Access JWT токена (короткоживущий)"""
     payload = {
         'user_id': user.id,
         'username': user.username,
@@ -129,9 +134,20 @@ def generate_token(user):
     return jwt.encode(payload, app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
 
-@app.route('/auth/verify', methods=['POST'])
+def generate_refresh_token(user):
+    """Генерация Refresh JWT токена (долгоживущий)"""
+    payload = {
+        'user_id': user.id,
+        'username': user.username,
+        'type': 'refresh',
+        'exp': datetime.utcnow() + timedelta(seconds=app.config['JWT_REFRESH_TOKEN_EXPIRES'])
+    }
+    return jwt.encode(payload, app.config['JWT_SECRET_KEY'], algorithm='HS256')
+
+
+@app.route('/auth/verify', methods=['GET', 'POST'])
 def verify():
-    """Проверка токена"""
+    """Проверка Access токена"""
     token = request.headers.get('Authorization', '').replace('Bearer ', '')
     
     if not token:
@@ -139,6 +155,11 @@ def verify():
     
     try:
         payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+        
+        # Проверяем что это Access token, а не Refresh
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use refresh endpoint for refresh token'}), 401
+            
         user = User.query.get(payload['user_id'])
         
         if not user:
@@ -149,6 +170,41 @@ def verify():
         return jsonify({'error': 'Token expired'}), 401
     except jwt.InvalidTokenError:
         return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/refresh', methods=['POST'])
+def refresh():
+    """Обновление Access токена используя Refresh токен"""
+    data = request.get_json() or {}
+    refresh_token = data.get('refreshToken') or request.headers.get('Authorization', '').replace('Bearer ', '')
+    
+    if not refresh_token:
+        return jsonify({'error': 'Refresh token missing'}), 401
+    
+    try:
+        payload = jwt.decode(refresh_token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+        
+        # Проверяем что это именно Refresh token
+        if payload.get('type') != 'refresh':
+            return jsonify({'error': 'Invalid token type'}), 401
+        
+        user = User.query.get(payload['user_id'])
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Генерируем новый Access token
+        access_token = generate_access_token(user)
+        
+        return jsonify({
+            'message': 'Token refreshed successfully',
+            'accessToken': access_token,
+            'user': user.to_dict()
+        }), 200
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Refresh token expired, please login again'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid refresh token'}), 401
 
 
 def create_default_user():

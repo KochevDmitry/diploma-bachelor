@@ -19,9 +19,15 @@ const LoginForm = ({ onLogin, apiUrl }) => {
         ? { username, password }
         : { username, email, password };
 
+      console.log('🔐 LoginForm: отправляем запрос к', endpoint);
       const response = await axios.post(`${apiUrl}${endpoint}`, data);
-      onLogin(response.data.user, response.data.token);
+      console.log('🔐 LoginForm: ответ от сервера:', response.data);
+      console.log('  - user:', response.data.user);
+      console.log('  - accessToken:', response.data.accessToken ? '(present)' : 'MISSING');
+      console.log('  - refreshToken:', response.data.refreshToken ? '(present)' : 'MISSING');
+      onLogin(response.data.user, response.data.accessToken, response.data.refreshToken);
     } catch (err) {
+      console.error('🔐 LoginForm: ошибка', err);
       setError(err.response?.data?.error || 'Произошла ошибка');
     }
   };
