@@ -82,54 +82,31 @@ const MapComponent = ({
       controls.addChild(new YMapZoomControl({}));
       map.addChild(controls);
 
-      // Обработчик клика для создания события
-      const handleMapClick = (e) => {
-        // Проверяем, был ли это drag операция
-        if (mouseDownRef.current) {
-          const dx = e.clientX - mouseDownRef.current.x;
-          const dy = e.clientY - mouseDownRef.current.y;
-          const dragDistance = Math.sqrt(dx * dx + dy * dy);
+      // Используем YMapListener для обработки событий клика
+      const mapListener = new window.ymaps3.YMapListener({
+        onClick: (object, mapEvent) => {
+          console.log('Map clicked - object:', object, 'mapEvent:', mapEvent);
           
-          // Если пользователь передвинул мышь больше чем на 5px - это drag, не клик
-          if (dragDistance > 5) {
-            console.log('Drag detected, ignoring click');
-            mouseDownRef.current = null;
+          // Проверяем, был ли клик на маркере
+          if (object) {
+            console.log('Clicked on object, ignoring');
             return;
           }
-        }
 
-        // Находим был ли клик на маркере или на пустой части карты
-        const targetElement = e.target;
-        
-        // Проверяем, что это не клик на маркер
-        const isMarker = targetElement.closest('[class*="marker"]') || 
-                        targetElement.closest('[class*="YMapMarker"]') ||
-                        targetElement.closest('.event-marker') ||
-                        targetElement.closest('.venue-marker');
-        
-        if (!isMarker && !targetElement.closest('button') && !targetElement.closest('a')) {
-          // Используем центр карты с некторым смещением для демонстрации
-          const lat = 55.755819 + (Math.random() - 0.5) * 0.05 * (Math.random() > 0.5 ? 1 : -1);
-          const lon = 37.617644 + (Math.random() - 0.5) * 0.05 * (Math.random() > 0.5 ? 1 : -1);
-          
-          console.log('Map clicked, creating event at:', { lat, lon });
-          setCreateFormCoords({ lat, lon });
-          setShowCreateForm(true);
+          // mapEvent.coordinates содержит [longitude, latitude]
+          if (mapEvent && mapEvent.coordinates) {
+            const [lon, lat] = mapEvent.coordinates;
+            console.log('Map clicked, creating event at:', { lat, lon });
+            
+            setCreateFormCoords({ lat, lon });
+            setShowCreateForm(true);
+          } else {
+            console.error('No coordinates in mapEvent');
+          }
         }
-      };
-
-      const handleMouseDown = (e) => {
-        mouseDownRef.current = { x: e.clientX, y: e.clientY };
-      };
+      });
       
-      // Регистрируем обработчики после небольшой задержки для стабильности
-      setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.addEventListener('mousedown', handleMouseDown);
-          mapRef.current.addEventListener('click', handleMapClick);
-          console.log('Map click handlers registered');
-        }
-      }, 500);
+      map.addChild(mapListener);
 
       mapInstanceRef.current = map;
       console.log('Map created successfully! venues:', venues?.length || 0, 'events:', events?.length || 0);
