@@ -343,6 +343,35 @@ def leave_session(session_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/games/user/<int:user_id>/history', methods=['GET'])
+def get_user_history(user_id):
+    """Получение истории игровых сессий пользователя"""
+    # Сессии, где пользователь был создателем
+    created_sessions = GameSession.query.filter_by(creator_id=user_id).all()
+    created_ids = {s.id for s in created_sessions}
+
+    # Сессии, где пользователь был участником
+    participations = SessionParticipant.query.filter_by(user_id=user_id).all()
+    participated_ids = {p.session_id for p in participations} - created_ids
+
+    participated_sessions = []
+    if participated_ids:
+        participated_sessions = GameSession.query.filter(
+            GameSession.id.in_(participated_ids)
+        ).all()
+
+    all_sessions = created_sessions + participated_sessions
+    all_sessions.sort(key=lambda s: s.created_at, reverse=True)
+
+    history = []
+    for session in all_sessions:
+        entry = session.to_dict()
+        entry['is_creator'] = session.creator_id == user_id
+        history.append(entry)
+
+    return jsonify(history), 200
+
+
 @app.route('/api/games/<int:session_id>', methods=['DELETE'])
 def delete_session(session_id):
     """Удаление игровой сессии"""

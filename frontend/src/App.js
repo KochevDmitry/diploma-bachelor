@@ -3,6 +3,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import MapComponent from './components/MapComponent';
 import VenueInfo from './components/VenueInfo';
+import GameHistory from './components/GameHistory';
 import LoginForm from './components/LoginForm';
 import CreateEventForm from './components/CreateEventForm';
 import './App.css';
@@ -22,6 +23,7 @@ function App() {
   const [mapEvents, setMapEvents] = useState([]);
   const [socket, setSocket] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Загрузка Yandex Maps API
   useEffect(() => {
@@ -354,6 +356,13 @@ function App() {
           {user ? (
             <>
               <span>Привет, {user.username}!</span>
+              <button onClick={() => {
+                console.log('📋 Кнопка "Мои записи" нажата. showHistory было:', showHistory, '-> станет:', !showHistory);
+                console.log('📋 user:', user);
+                setShowHistory(!showHistory);
+              }}>
+                Мои записи
+              </button>
               <button onClick={handleLogout}>Выйти</button>
             </>
           ) : (
@@ -374,13 +383,21 @@ function App() {
             currentUser={user}
           />
         </div>
-        {selectedVenue && (
+        {selectedVenue && !showHistory && (
           <VenueInfo
             venue={selectedVenue}
             sessions={venueSessions}
             currentUser={user}
             onCreateSession={handleCreateSession}
             onJoinSession={handleJoinSession}
+          />
+        )}
+        {console.log('📋 RENDER CHECK: showHistory=', showHistory, 'user=', !!user)}
+        {showHistory && user && (
+          <GameHistory
+            userId={user.id}
+            apiUrl={API_URL}
+            onClose={() => setShowHistory(false)}
           />
         )}
       </div>

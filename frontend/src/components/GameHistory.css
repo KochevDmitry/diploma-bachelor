@@ -1,0 +1,129 @@
+.game-history {
+  width: 400px;
+  min-width: 400px;
+  flex-shrink: 0;
+  height: 100%;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #ddd;
+  overflow: hidden;
+}
+
+.game-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #ddd;
+}
+
+.game-history-header h2 {
+  margin: 0;
+  color: #282c34;
+}
+
+.game-history-close {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: #666;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.game-history-close:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.game-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-history-empty {
+  text-align: center;
+  color: #999;
+  padding: 2rem 0;
+}
+
+.game-history-card {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-history-card-sport {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #282c34;
+  margin-bottom: 0.25rem;
+}
+
+.game-history-card-date {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+}
+
+.game-history-card-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.game-history-card-status {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.status-waiting {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-full {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.status-started {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-finished {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.game-history-card-players {
+  font-size: 0.85rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.game-history-card-creator {
+  font-size: 0.75rem;
+  background-color: #61dafb;
+  color: #282c34;
+  padding: 0.1rem 0.4rem;
+  border-radius: 8px;
+  font-weight: 600;
+}

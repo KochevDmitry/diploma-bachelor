@@ -185,8 +185,8 @@ def game_root_proxy():
 @verify_token
 def game_proxy(path):
     """Проксирование запросов к Game Session Service (требует авторизации)"""
-    data = request.get_json()
-    
+    data = request.get_json(silent=True)
+
     # Для POST запросов к join операции, пересекаем user_id из токена
     if request.method == 'POST' and '/join' in path:
         if data is None:
