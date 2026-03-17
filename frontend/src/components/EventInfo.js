@@ -1,7 +1,7 @@
 import React from 'react';
 import './EventInfo.css';
 
-const EventInfo = ({ event, currentUser, onJoinEvent, onClose }) => {
+const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onClose }) => {
   console.log('EventInfo opened with event:', event);
   
   const isCreator = currentUser && event.creator_id === currentUser.id;
@@ -13,6 +13,14 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onClose }) => {
       await onJoinEvent(event.id);
     } catch (error) {
       alert('Ошибка при присоединении к событию');
+    }
+  };
+
+  const handleLeave = async () => {
+    try {
+      await onLeaveEvent(event.id);
+    } catch (error) {
+      alert('Ошибка при выходе из события');
     }
   };
 
@@ -79,8 +87,18 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onClose }) => {
         )}
 
         {isParticipant && (
-          <div className="participant-notice">
-            Вы участвуете в этом событии
+          <div className="participant-section">
+            <div className="participant-notice">
+              Вы участвуете в этом событии
+            </div>
+            <div className="event-actions">
+              <button
+                onClick={handleLeave}
+                className="leave-btn"
+              >
+                Покинуть событие
+              </button>
+            </div>
           </div>
         )}
 

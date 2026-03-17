@@ -337,6 +337,27 @@ function App() {
     }
   };
 
+  const handleLeaveMapEvent = async (eventId) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    try {
+      const response = await axios.post(`${API_URL}/api/games/${eventId}/leave`, {
+        user_id: user.id
+      });
+      console.log('Left event:', response.data);
+      // Перезагружаем события на карте после небольшой задержки
+      setTimeout(() => {
+        loadMapEvents();
+      }, 500);
+      return response.data;
+    } catch (error) {
+      console.error('Error leaving map event:', error);
+      throw error;
+    }
+  };
+
   const handleLoginSuccess = (userData, newAccessToken, newRefreshToken) => {
     console.log('🔐 handleLoginSuccess: вход успешен, загружаем события');
     handleLogin(userData, newAccessToken, newRefreshToken);
@@ -379,6 +400,7 @@ function App() {
             onEventSelect={() => {}} // Пока не используется
             onCreateEvent={handleCreateMapEvent}
             onJoinEvent={handleJoinMapEvent}
+            onLeaveEvent={handleLeaveMapEvent}
             yandexApiKey={YANDEX_MAPS_API_KEY}
             currentUser={user}
           />
