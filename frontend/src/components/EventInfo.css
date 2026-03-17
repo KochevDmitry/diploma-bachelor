@@ -198,3 +198,38 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.creator-section {
+  margin-top: 15px;
+}
+
+.creator-section .creator-notice {
+  margin-top: 0;
+}
+
+.creator-section .event-actions {
+  margin-top: 10px;
+  border-top: none;
+  padding-top: 0;
+}
+
+.finish-btn {
+  padding: 10px 20px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.finish-btn:hover {
+  background: #5a6268;
+}
+
+.finish-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
