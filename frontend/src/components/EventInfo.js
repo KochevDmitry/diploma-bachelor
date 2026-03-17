@@ -1,7 +1,7 @@
 import React from 'react';
 import './EventInfo.css';
 
-const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onClose }) => {
+const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEvent, onClose }) => {
   console.log('EventInfo opened with event:', event);
   
   const isCreator = currentUser && event.creator_id === currentUser.id;
@@ -21,6 +21,14 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onClose }) =
       await onLeaveEvent(event.id);
     } catch (error) {
       alert('Ошибка при выходе из события');
+    }
+  };
+
+  const handleFinish = async () => {
+    try {
+      await onFinishEvent(event.id);
+    } catch (error) {
+      alert('Ошибка при завершении события');
     }
   };
 
@@ -103,8 +111,18 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onClose }) =
         )}
 
         {isCreator && (
-          <div className="creator-notice">
-            Вы создали это событие
+          <div className="creator-section">
+            <div className="creator-notice">
+              Вы создали это событие
+            </div>
+            <div className="event-actions">
+              <button
+                onClick={handleFinish}
+                className="finish-btn"
+              >
+                Завершить сбор
+              </button>
+            </div>
           </div>
         )}
       </div>

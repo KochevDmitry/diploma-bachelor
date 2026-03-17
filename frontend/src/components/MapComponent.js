@@ -10,6 +10,7 @@ const MapComponent = ({
   onCreateEvent,
   onJoinEvent,
   onLeaveEvent,
+  onFinishEvent,
   yandexApiKey,
   currentUser
 }) => {
@@ -307,6 +308,16 @@ const MapComponent = ({
     }
   };
 
+  const handleFinishEvent = async (eventId) => {
+    try {
+      await onFinishEvent(eventId);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error('Error finishing event:', error);
+      alert('Ошибка при завершении события');
+    }
+  };
+
   const handleCloseEventInfo = () => {
     setSelectedEvent(null);
   };
@@ -339,6 +350,7 @@ const MapComponent = ({
           currentUser={currentUser}
           onJoinEvent={handleJoinEvent}
           onLeaveEvent={handleLeaveEvent}
+          onFinishEvent={handleFinishEvent}
           onClose={handleCloseEventInfo}
         />
       )}

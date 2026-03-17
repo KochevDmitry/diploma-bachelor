@@ -343,6 +343,38 @@ def leave_session(session_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/games/<int:session_id>/finish', methods=['POST'])
+def finish_session(session_id):
+    """Завершение игровой сессии (только создатель)"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    session = GameSession.query.get_or_404(session_id)
+
+    if session.creator_id != user_id:
+        return jsonify({'error': 'Only creator can finish the session'}), 403
+
+    if session.status == 'finished':
+        return jsonify({'error': 'Session is already finished'}), 400
+
+    try:
+        session.status = 'finished'
+        session.finished_at = datetime.utcnow()
+        db.session.commit()
+
+        # Очистка кеша
+        if session.venue_id:
+            redis_client.delete(f'venue:{session.venue_id}:sessions')
+
+        return jsonify(session.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/games/user/<int:user_id>/history', methods=['GET'])
 def get_user_history(user_id):
     """Получение истории игровых сессий пользователя"""
