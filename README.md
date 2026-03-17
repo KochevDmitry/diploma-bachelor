@@ -278,6 +278,10 @@ VALUES (
     ST_SetSRID(ST_MakePoint(37.573856, 55.751574), 4326)
 );
 ```
+### Удаление всех площадок
+```bash
+docker-compose exec postgres psql -U sportapp_user -d sportapp_db -c "TRUNCATE TABLE session_participants CASCADE; TRUNCATE TABLE game_sessions CASCADE;"
+```
 
 ## 🐛 Troubleshooting
 

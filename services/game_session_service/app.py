@@ -8,12 +8,25 @@ from celery import Celery
 import redis
 import os
 import json
+import logging
+import sys
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)
 
-# Конфигурация
+# Настройка логирования
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - GAME_SERVICE - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+logger.info("=" * 60)
+logger.info("Game Session Service starting...")
+logger.info("=" * 60)# Конфигурация
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL', 
     'postgresql://sportapp_user:sportapp_password@postgres:5432/sportapp_db'
@@ -54,12 +67,14 @@ class GameSession(db.Model):
     __tablename__ = 'game_sessions'
     
     id = db.Column(db.Integer, primary_key=True)
-    venue_id = db.Column(db.Integer, db.ForeignKey('venues.id'), nullable=False)
-    creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    venue_id = db.Column(db.Integer, nullable=True)  # Ссылка на Venue ID из map_service
+    creator_id = db.Column(db.Integer, nullable=False)  # Ссылка на User ID из auth_service
     sport_type = db.Column(db.String(50), nullable=False)
     max_players = db.Column(db.Integer, default=10)
     current_players = db.Column(db.Integer, default=1)
     status = db.Column(db.String(20), default='waiting')  # waiting, full, started, finished
+    latitude = db.Column(db.Float, nullable=True)  # Координаты для произвольных событий
+    longitude = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     started_at = db.Column(db.DateTime)
     finished_at = db.Column(db.DateTime)
@@ -76,6 +91,8 @@ class GameSession(db.Model):
             'max_players': self.max_players,
             'current_players': self.current_players,
             'status': self.status,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
             'participants': participants,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None
@@ -87,7 +104,7 @@ class SessionParticipant(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('game_sessions.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)  # Ссылка на User ID из auth_service БД
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     __table_args__ = (db.UniqueConstraint('session_id', 'user_id', name='unique_participant'),)
@@ -140,6 +157,31 @@ def get_venue_sessions(venue_id):
     return jsonify(result), 200
 
 
+@app.route('/api/games/map', methods=['GET'])
+def get_map_sessions():
+    """Получение всех активных сессий с координатами для карты"""
+    # Получаем сессии с координатами (не привязанные к venue или с venue)
+    sessions = GameSession.query.filter(
+        GameSession.status == 'waiting',
+        db.or_(
+            GameSession.latitude.isnot(None),
+            GameSession.venue_id.isnot(None)
+        )
+    ).all()
+    
+    result = []
+    for session in sessions:
+        session_dict = session.to_dict()
+        # Если сессия привязана к venue, добавим координаты venue
+        if session.venue_id and not session.latitude:
+            # Здесь нужно получить координаты venue из другого сервиса
+            # Пока что пропустим, frontend должен сам знать координаты venues
+            pass
+        result.append(session_dict)
+    
+    return jsonify(result), 200
+
+
 @app.route('/api/games/<int:session_id>', methods=['GET'])
 def get_session(session_id):
     """Получение информации о сессии"""
@@ -152,16 +194,22 @@ def create_session():
     """Создание новой игровой сессии"""
     data = request.get_json()
     
-    if not data or not data.get('venue_id') or not data.get('creator_id'):
-        return jsonify({'error': 'Missing required fields: venue_id, creator_id'}), 400
+    if not data or not data.get('creator_id'):
+        return jsonify({'error': 'Missing required field: creator_id'}), 400
+    
+    # Проверяем, что либо venue_id, либо координаты указаны
+    if not data.get('venue_id') and (not data.get('latitude') or not data.get('longitude')):
+        return jsonify({'error': 'Either venue_id or latitude/longitude coordinates are required'}), 400
     
     session = GameSession(
-        venue_id=data['venue_id'],
+        venue_id=data.get('venue_id'),
         creator_id=data['creator_id'],
         sport_type=data.get('sport_type', 'football'),
         max_players=data.get('max_players', 10),
         current_players=1,
-        status='waiting'
+        status='waiting',
+        latitude=data.get('latitude'),
+        longitude=data.get('longitude')
     )
     
     try:
@@ -172,10 +220,11 @@ def create_session():
         set_session_participants(session.id, [data['creator_id']])
         
         # Очистка кеша
-        redis_client.delete(f'venue:{data["venue_id"]}:sessions')
+        if data.get('venue_id'):
+            redis_client.delete(f'venue:{data["venue_id"]}:sessions')
         
         # Отправка уведомления через Celery
-        notify_new_session.delay(session.id, data['venue_id'])
+        notify_new_session.delay(session.id, data.get('venue_id'))
         
         return jsonify(session.to_dict()), 201
     except Exception as e:
@@ -186,26 +235,37 @@ def create_session():
 @app.route('/api/games/<int:session_id>/join', methods=['POST'])
 def join_session(session_id):
     """Присоединение к игровой сессии"""
+    logger.info(f">>> Join request: session_id={session_id}")
     data = request.get_json()
     user_id = data.get('user_id')
     
+    logger.debug(f"  user_id from request: {user_id}")
+    
     if not user_id:
+        logger.error(" Missing user_id in request")
         return jsonify({'error': 'Missing user_id'}), 400
     
     session = GameSession.query.get_or_404(session_id)
+    logger.debug(f"  session found: {session.id}, status: {session.status}, players: {session.current_players}/{session.max_players}")
     
     if session.status != 'waiting':
+        logger.error(f"Session status is '{session.status}', not 'waiting'")
         return jsonify({'error': 'Session is not available for joining'}), 400
     
     # Проверка, не присоединился ли уже
     participants = get_session_participants(session_id)
+    logger.debug(f"  current participants: {participants}")
+    
     if user_id in participants:
+        logger.error(f" User {user_id} already in session")
         return jsonify({'error': 'User already in session'}), 400
     
     if session.current_players >= session.max_players:
+        logger.error(f"Session is full: {session.current_players}/{session.max_players}")
         return jsonify({'error': 'Session is full'}), 400
     
     try:
+        logger.debug(f"trying to add user {user_id} to session {session_id}...")
         # Добавление участника в БД
         participant = SessionParticipant(
             session_id=session_id,
@@ -219,13 +279,16 @@ def join_session(session_id):
             session.status = 'full'
         
         db.session.commit()
+        logger.info(f"User {user_id} added to session {session_id}")
         
         # Обновление Redis
         participants.append(user_id)
         set_session_participants(session_id, participants)
+        logger.debug(f"Redis updated with participants: {participants}")
         
         # Очистка кеша
-        redis_client.delete(f'venue:{session.venue_id}:sessions')
+        if session.venue_id:
+            redis_client.delete(f'venue:{session.venue_id}:sessions')
         
         # Уведомление о присоединении
         notify_session_update.delay(session_id)
@@ -233,6 +296,7 @@ def join_session(session_id):
         return jsonify(session.to_dict()), 200
     except Exception as e:
         db.session.rollback()
+        logger.exception(f"ERROR: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -279,6 +343,35 @@ def leave_session(session_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/games/user/<int:user_id>/history', methods=['GET'])
+def get_user_history(user_id):
+    """Получение истории игровых сессий пользователя"""
+    # Сессии, где пользователь был создателем
+    created_sessions = GameSession.query.filter_by(creator_id=user_id).all()
+    created_ids = {s.id for s in created_sessions}
+
+    # Сессии, где пользователь был участником
+    participations = SessionParticipant.query.filter_by(user_id=user_id).all()
+    participated_ids = {p.session_id for p in participations} - created_ids
+
+    participated_sessions = []
+    if participated_ids:
+        participated_sessions = GameSession.query.filter(
+            GameSession.id.in_(participated_ids)
+        ).all()
+
+    all_sessions = created_sessions + participated_sessions
+    all_sessions.sort(key=lambda s: s.created_at, reverse=True)
+
+    history = []
+    for session in all_sessions:
+        entry = session.to_dict()
+        entry['is_creator'] = session.creator_id == user_id
+        history.append(entry)
+
+    return jsonify(history), 200
+
+
 @app.route('/api/games/<int:session_id>', methods=['DELETE'])
 def delete_session(session_id):
     """Удаление игровой сессии"""
@@ -302,14 +395,14 @@ def delete_session(session_id):
 
 
 # Celery задачи
-@celery.task
+@celery.task(name='app.notify_new_session')
 def notify_new_session(session_id, venue_id):
     """Уведомление о новой сессии"""
     # Здесь можно отправить уведомление через Notification Service
     pass
 
 
-@celery.task
+@celery.task(name='app.notify_session_update')
 def notify_session_update(session_id):
     """Уведомление об обновлении сессии"""
     # Здесь можно отправить уведомление через Notification Service
