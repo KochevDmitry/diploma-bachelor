@@ -379,6 +379,28 @@ function App() {
     }
   };
 
+  const handleUpdateMapEvent = async (eventId, updates) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    try {
+      const response = await axios.post(`${API_URL}/api/games/${eventId}/update`, {
+        user_id: user.id,
+        ...updates
+      });
+      console.log('Updated event:', response.data);
+      // Перезагружаем события на карте после небольшой задержки
+      setTimeout(() => {
+        loadMapEvents();
+      }, 500);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating map event:', error);
+      throw error;
+    }
+  };
+
   const handleLoginSuccess = (userData, newAccessToken, newRefreshToken) => {
     console.log('🔐 handleLoginSuccess: вход успешен, загружаем события');
     handleLogin(userData, newAccessToken, newRefreshToken);
@@ -423,6 +445,7 @@ function App() {
             onJoinEvent={handleJoinMapEvent}
             onLeaveEvent={handleLeaveMapEvent}
             onFinishEvent={handleFinishMapEvent}
+            onUpdateEvent={handleUpdateMapEvent}
             yandexApiKey={YANDEX_MAPS_API_KEY}
             currentUser={user}
           />

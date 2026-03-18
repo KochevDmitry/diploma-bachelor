@@ -375,6 +375,52 @@ def finish_session(session_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/games/<int:session_id>/update', methods=['POST'])
+def update_session(session_id):
+    """Обновление параметров игровой сессии (только создатель)"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+    max_players = data.get('max_players')
+
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    session = GameSession.query.get_or_404(session_id)
+
+    if session.creator_id != user_id:
+        return jsonify({'error': 'Only creator can update the session'}), 403
+
+    if session.status == 'finished':
+        return jsonify({'error': 'Cannot update finished session'}), 400
+
+    try:
+        if max_players is not None:
+            # Проверяем что новое значение больше текущего количества игроков
+            if max_players <= session.current_players:
+                return jsonify({'error': 'Cannot set max_players equal or less than current players'}), 400
+            if max_players < 2:
+                return jsonify({'error': 'max_players must be at least 2'}), 400
+
+            session.max_players = max_players
+
+            # Обновляем статус если нужно
+            if session.current_players >= max_players:
+                session.status = 'full'
+            elif session.status == 'full':
+                session.status = 'waiting'
+
+        db.session.commit()
+
+        # Очистка кеша
+        if session.venue_id:
+            redis_client.delete(f'venue:{session.venue_id}:sessions')
+
+        return jsonify(session.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/games/user/<int:user_id>/history', methods=['GET'])
 def get_user_history(user_id):
     """Получение истории игровых сессий пользователя"""

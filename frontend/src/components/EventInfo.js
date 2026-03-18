@@ -1,7 +1,7 @@
 import React from 'react';
 import './EventInfo.css';
 
-const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEvent, onClose }) => {
+const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEvent, onUpdateEvent, onClose }) => {
   console.log('EventInfo opened with event:', event);
   
   const isCreator = currentUser && event.creator_id === currentUser.id;
@@ -29,6 +29,30 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEven
       await onFinishEvent(event.id);
     } catch (error) {
       alert('Ошибка при завершении события');
+    }
+  };
+
+  const handleIncreaseMaxPlayers = async () => {
+    try {
+      await onUpdateEvent(event.id, { max_players: event.max_players + 1 });
+    } catch (error) {
+      alert('Ошибка при изменении количества игроков');
+    }
+  };
+
+  const handleDecreaseMaxPlayers = async () => {
+    if (event.max_players <= event.current_players + 1) {
+      alert('Нельзя уменьшить до текущего количества игроков');
+      return;
+    }
+    if (event.max_players <= 2) {
+      alert('Минимум 2 игрока');
+      return;
+    }
+    try {
+      await onUpdateEvent(event.id, { max_players: event.max_players - 1 });
+    } catch (error) {
+      alert('Ошибка при изменении количества игроков');
     }
   };
 
@@ -61,9 +85,29 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEven
         <div className="event-details">
           <div className="detail-row">
             <span className="label">Игроки:</span>
-            <span className="value">
-              {event.current_players}/{event.max_players}
-            </span>
+            {isCreator ? (
+              <span className="value players-edit">
+                {event.current_players}/
+                <button
+                  className="players-btn"
+                  onClick={handleDecreaseMaxPlayers}
+                  disabled={event.max_players <= event.current_players + 1 || event.max_players <= 2}
+                >
+                  -
+                </button>
+                <span className="max-players">{event.max_players}</span>
+                <button
+                  className="players-btn"
+                  onClick={handleIncreaseMaxPlayers}
+                >
+                  +
+                </button>
+              </span>
+            ) : (
+              <span className="value">
+                {event.current_players}/{event.max_players}
+              </span>
+            )}
           </div>
 
           <div className="detail-row">
