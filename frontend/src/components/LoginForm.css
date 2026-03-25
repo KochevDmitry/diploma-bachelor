@@ -1,95 +1,165 @@
+/* Full page login */
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  position: relative;
+  overflow: hidden;
 }
 
+/* Декоративные круги на фоне */
+.login-container::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  top: -200px;
+  right: -200px;
+}
+
+.login-container::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  bottom: -100px;
+  left: -100px;
+}
+
+/* Glassmorphism форма */
 .login-form {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: var(--spacing-10);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 48px -12px var(--shadow-key);
   width: 100%;
   max-width: 400px;
+  position: relative;
+  z-index: 1;
 }
 
 .login-form h1 {
   text-align: center;
-  color: #282c34;
-  margin-bottom: 0.5rem;
+  font-family: 'Lexend', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: var(--spacing-2);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .login-form h2 {
   text-align: center;
-  color: #666;
-  margin-bottom: 1.5rem;
-  font-size: 1.2rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+  margin-bottom: var(--spacing-8);
 }
 
 .error-message {
-  background-color: #fee;
-  color: #c33;
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
+  background: var(--error-container);
+  color: var(--on-error);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-5);
   text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
 }
 
 .login-form form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--spacing-5);
 }
 
 .login-form input {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: var(--spacing-4);
+  background: var(--surface-container-high);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-family: 'Inter', sans-serif;
   font-size: 1rem;
+  color: var(--on-surface);
+  transition: all var(--transition-fast);
+}
+
+.login-form input::placeholder {
+  color: var(--on-surface-variant);
+}
+
+.login-form input:focus {
+  outline: none;
+  background: var(--surface-container-lowest);
+  box-shadow: 0 0 0 2px var(--surface-tint);
 }
 
 .login-form button[type="submit"] {
-  padding: 0.75rem;
-  background-color: #667eea;
-  color: white;
+  padding: var(--spacing-4);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-full);
+  font-family: 'Inter', sans-serif;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 600;
   cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: 0 4px 12px -2px var(--shadow-key);
+  margin-top: var(--spacing-2);
 }
 
 .login-form button[type="submit"]:hover {
-  background-color: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -2px var(--shadow-key);
+}
+
+.login-form button[type="submit"]:active {
+  transform: translateY(0);
 }
 
 .login-form p {
   text-align: center;
-  margin-top: 1rem;
-  color: #666;
+  margin-top: var(--spacing-6);
+  font-family: 'Inter', sans-serif;
+  color: var(--on-surface-variant);
 }
 
 .toggle-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: var(--primary);
   cursor: pointer;
-  text-decoration: underline;
+  font-family: 'Inter', sans-serif;
   font-size: inherit;
+  font-weight: 600;
+  transition: color var(--transition-fast);
 }
 
 .toggle-btn:hover {
-  color: #5568d3;
+  color: var(--primary-dim);
 }
 
-/* Стили для модального окна */
+/* Modal version */
 .login-form-modal {
-  padding: 2rem;
+  padding: var(--spacing-8);
 }
 
 .login-form-modal .login-form {
   box-shadow: none;
   max-width: 100%;
+  padding: var(--spacing-6);
+  background: transparent;
+  backdrop-filter: none;
 }

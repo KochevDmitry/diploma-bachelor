@@ -1,129 +1,164 @@
+/* Game History Panel - glassmorphism sidebar */
 .game-history {
   width: 400px;
   min-width: 400px;
   flex-shrink: 0;
   height: 100%;
-  background-color: #f5f5f5;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
-  border-left: 1px solid #ddd;
+  box-shadow: -12px 0 32px -4px var(--shadow-ambient);
   overflow: hidden;
+  animation: slideInRight var(--transition-normal) ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .game-history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 2px solid #ddd;
+  padding: var(--spacing-6);
+  background: var(--surface-container-low);
 }
 
 .game-history-header h2 {
   margin: 0;
-  color: #282c34;
+  font-family: 'Lexend', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--on-surface);
 }
 
 .game-history-close {
-  background: none;
+  background: var(--surface-container-high);
   border: none;
-  font-size: 1.8rem;
+  font-size: 1.25rem;
   cursor: pointer;
-  color: #666;
+  color: var(--on-surface-variant);
   width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
 }
 
 .game-history-close:hover {
-  background-color: #e0e0e0;
-  color: #333;
+  background: var(--surface-container-highest);
+  color: var(--on-surface);
 }
 
 .game-history-list {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 1.5rem;
+  padding: var(--spacing-4) var(--spacing-5);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--spacing-4);
 }
 
 .game-history-empty {
   text-align: center;
-  color: #999;
-  padding: 2rem 0;
+  color: var(--on-surface-variant);
+  padding: var(--spacing-10) 0;
+  font-family: 'Inter', sans-serif;
 }
 
+/* Card - no borders, tonal surfaces */
 .game-history-card {
-  background-color: white;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--surface-container-lowest);
+  padding: var(--spacing-5);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px -4px var(--shadow-ambient);
+  transition: all var(--transition-fast);
+}
+
+.game-history-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px var(--shadow-ambient);
 }
 
 .game-history-card-sport {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #282c34;
-  margin-bottom: 0.25rem;
+  font-family: 'Lexend', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin-bottom: var(--spacing-1);
 }
 
 .game-history-card-date {
-  font-size: 0.85rem;
-  color: #888;
-  margin-bottom: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  color: var(--on-surface-variant);
+  margin-bottom: var(--spacing-3);
 }
 
 .game-history-card-details {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--spacing-2);
 }
 
 .game-history-card-status {
-  font-size: 0.8rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6875rem;
   font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
 }
 
 .status-waiting {
-  background-color: #fff3cd;
-  color: #856404;
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
 }
 
 .status-full {
-  background-color: #cce5ff;
-  color: #004085;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
 }
 
 .status-started {
-  background-color: #d4edda;
-  color: #155724;
+  background: var(--tertiary-container);
+  color: var(--on-surface);
 }
 
 .status-finished {
-  background-color: #e2e3e5;
-  color: #383d41;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
 }
 
 .game-history-card-players {
-  font-size: 0.85rem;
-  color: #666;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-2);
 }
 
 .game-history-card-creator {
-  font-size: 0.75rem;
-  background-color: #61dafb;
-  color: #282c34;
-  padding: 0.1rem 0.4rem;
-  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6875rem;
   font-weight: 600;
+  letter-spacing: 0.03em;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-full);
 }

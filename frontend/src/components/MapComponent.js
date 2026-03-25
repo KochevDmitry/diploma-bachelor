@@ -167,20 +167,22 @@ const MapComponent = ({
 
       console.log(`Adding marker for ${venue.name} at [${venue.coordinates.lon}, ${venue.coordinates.lat}]`);
 
-      // Создаём HTML элемент для маркера
+      // Создаём HTML элемент для маркера - новый дизайн
       const markerElement = document.createElement('div');
       markerElement.className = 'venue-marker';
       markerElement.innerHTML = `
         <div style="
-          background: #ff0000;
-          color: white;
-          padding: 8px 12px;
-          border-radius: 20px;
-          font-size: 14px;
-          font-weight: bold;
+          background: linear-gradient(135deg, #a33800 0%, #ffc4af 100%);
+          color: #ffefeb;
+          padding: 10px 16px;
+          border-radius: 9999px;
+          font-family: 'Lexend', sans-serif;
+          font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          box-shadow: 0 8px 20px -4px rgba(12, 14, 16, 0.2);
           white-space: nowrap;
+          transition: all 0.25s ease;
         ">
           ${venue.name}
         </div>
@@ -232,23 +234,33 @@ const MapComponent = ({
 
       console.log(`📍 Adding event marker for ${event.sport_type} at [${lon}, ${lat}]`);
 
-      // Создаём HTML элемент для маркера события
+      // Создаём HTML элемент для маркера события - новый дизайн
       const markerElement = document.createElement('div');
       markerElement.className = 'event-marker';
       markerElement.innerHTML = `
         <div style="
-          background: #28a745;
-          color: white;
-          padding: 6px 10px;
-          border-radius: 15px;
+          background: linear-gradient(135deg, #0049e6 0%, #829bff 100%);
+          color: #f2f1ff;
+          padding: 10px 16px;
+          border-radius: 9999px;
+          font-family: 'Inter', sans-serif;
           font-size: 12px;
-          font-weight: bold;
+          font-weight: 600;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          box-shadow: 0 8px 20px -4px rgba(12, 14, 16, 0.2);
           white-space: nowrap;
-          border: 2px solid white;
+          transition: all 0.25s ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         ">
-          ${event.sport_type} (${event.current_players}/${event.max_players})
+          <span style="font-family: 'Lexend', sans-serif;">${event.sport_type}</span>
+          <span style="
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+          ">${event.current_players}/${event.max_players}</span>
         </div>
       `;
 
