@@ -2,6 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import CreateEventForm from './CreateEventForm';
 import EventInfo from './EventInfo';
 
+// Перевод типов спорта
+const SPORT_LABELS = {
+  football: 'Футбол',
+  basketball: 'Баскетбол',
+  volleyball: 'Волейбол',
+  tennis: 'Теннис',
+  running: 'Бег',
+  other: 'Другое'
+};
+
+const getSportLabel = (sportType) => SPORT_LABELS[sportType] || sportType;
+
 const MapComponent = ({
   venues,
   events,
@@ -167,20 +179,22 @@ const MapComponent = ({
 
       console.log(`Adding marker for ${venue.name} at [${venue.coordinates.lon}, ${venue.coordinates.lat}]`);
 
-      // Создаём HTML элемент для маркера
+      // Создаём HTML элемент для маркера - новый дизайн
       const markerElement = document.createElement('div');
       markerElement.className = 'venue-marker';
       markerElement.innerHTML = `
         <div style="
-          background: #ff0000;
-          color: white;
-          padding: 8px 12px;
-          border-radius: 20px;
-          font-size: 14px;
-          font-weight: bold;
+          background: linear-gradient(135deg, #a33800 0%, #ffc4af 100%);
+          color: #ffefeb;
+          padding: 10px 16px;
+          border-radius: 9999px;
+          font-family: 'Lexend', sans-serif;
+          font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          box-shadow: 0 8px 20px -4px rgba(12, 14, 16, 0.2);
           white-space: nowrap;
+          transition: all 0.25s ease;
         ">
           ${venue.name}
         </div>
@@ -232,24 +246,15 @@ const MapComponent = ({
 
       console.log(`📍 Adding event marker for ${event.sport_type} at [${lon}, ${lat}]`);
 
-      // Создаём HTML элемент для маркера события
+      // Создаём HTML элемент для маркера события с пином
       const markerElement = document.createElement('div');
-      markerElement.className = 'event-marker';
+      markerElement.className = 'event-marker-wrapper';
       markerElement.innerHTML = `
-        <div style="
-          background: #28a745;
-          color: white;
-          padding: 6px 10px;
-          border-radius: 15px;
-          font-size: 12px;
-          font-weight: bold;
-          cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          white-space: nowrap;
-          border: 2px solid white;
-        ">
-          ${event.sport_type} (${event.current_players}/${event.max_players})
+        <div class="event-marker-content">
+          <span class="event-marker-sport">${getSportLabel(event.sport_type)}</span>
+          <span class="event-marker-players">${event.current_players}/${event.max_players}</span>
         </div>
+        <div class="event-marker-pin"></div>
       `;
 
       markerElement.onclick = (e) => {

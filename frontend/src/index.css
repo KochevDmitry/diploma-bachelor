@@ -1,3 +1,85 @@
+/* Подключение шрифтов */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+/* CSS переменные - дизайн-система из Stitch */
+:root {
+  /* Primary colors */
+  --primary: #0049e6;
+  --primary-container: #829bff;
+  --primary-dim: #0040cb;
+  --on-primary: #f2f1ff;
+  --on-primary-container: #001a63;
+
+  /* Secondary colors (Action Orange) */
+  --secondary: #a33800;
+  --secondary-container: #ffc4af;
+  --secondary-dim: #8f3000;
+  --on-secondary: #ffefeb;
+  --on-secondary-container: #812b00;
+
+  /* Tertiary */
+  --tertiary: #903985;
+  --tertiary-container: #fc96e9;
+
+  /* Surface colors */
+  --background: #f6f6f9;
+  --surface: #f6f6f9;
+  --surface-container: #e7e8eb;
+  --surface-container-high: #e1e2e6;
+  --surface-container-highest: #dbdde0;
+  --surface-container-low: #f0f0f3;
+  --surface-container-lowest: #ffffff;
+  --surface-dim: #d2d4d8;
+  --surface-tint: #0049e6;
+
+  /* Text colors */
+  --on-background: #2d2f31;
+  --on-surface: #2d2f31;
+  --on-surface-variant: #5a5c5e;
+
+  /* Outline */
+  --outline: #757779;
+  --outline-variant: #acadaf;
+
+  /* Error */
+  --error: #b41340;
+  --error-container: #f74b6d;
+  --on-error: #ffefef;
+
+  /* Inverse */
+  --inverse-surface: #0c0e10;
+  --inverse-on-surface: #9c9d9f;
+  --inverse-primary: #6a89ff;
+
+  /* Shadows */
+  --shadow-ambient: rgba(12, 14, 16, 0.08);
+  --shadow-key: rgba(12, 14, 16, 0.12);
+
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,19 +87,201 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background);
+  color: var(--on-surface);
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Lexend', sans-serif;
+  font-weight: 600;
+  color: var(--on-surface);
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 #root {
   width: 100%;
   height: 100vh;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Glass Panel - базовый класс для glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 12px 32px -4px var(--shadow-ambient);
+}
+
+/* Gradient кнопки */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3) var(--spacing-6);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: 0 4px 12px -2px var(--shadow-key);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -2px var(--shadow-key);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3) var(--spacing-6);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-secondary:hover {
+  background: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--primary);
+  border: none;
+  padding: var(--spacing-3) var(--spacing-6);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  border-radius: var(--radius-xl);
+}
+
+.btn-tertiary:hover {
+  background: var(--surface-container-high);
+}
+
+/* Labels */
+.label-sm {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+
+/* Status badges */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-chip.waiting {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.status-chip.in-progress {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.status-chip.completed {
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+}
+
+/* Event Map Markers with Pin */
+.event-marker-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transform: translate(-50%, -100%);
+  transition: transform 0.2s ease;
+}
+
+.event-marker-wrapper:hover {
+  transform: translate(-50%, -100%) scale(1.08);
+}
+
+.event-marker-content {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  padding: 10px 16px;
+  border-radius: 9999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px -4px rgba(12, 14, 16, 0.25);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event-marker-sport {
+  font-family: 'Lexend', sans-serif;
+}
+
+.event-marker-players {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+}
+
+.event-marker-pin {
+  position: relative;
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, var(--primary-container) 0%, var(--primary) 100%);
+}
+
+.event-marker-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 73, 230, 0.4);
 }

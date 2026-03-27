@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import './CreateEventForm.css';
 
+const SPORT_OPTIONS = [
+  { value: 'football', label: 'Футбол', icon: 'sports_soccer' },
+  { value: 'basketball', label: 'Баскетбол', icon: 'sports_basketball' },
+  { value: 'volleyball', label: 'Волейбол', icon: 'sports_volleyball' },
+  { value: 'tennis', label: 'Теннис', icon: 'sports_tennis' },
+  { value: 'running', label: 'Бег', icon: 'directions_run' },
+  { value: 'other', label: 'Другое', icon: 'sports_score' }
+];
+
 const CreateEventForm = ({ latitude, longitude, onCreate, onCancel }) => {
   const [sportType, setSportType] = useState('football');
-  const [maxPlayers, setMaxPlayers] = useState(10);
+  const [maxPlayers, setMaxPlayers] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const sportOptions = [
-    { value: 'football', label: 'Футбол' },
-    { value: 'basketball', label: 'Баскетбол' },
-    { value: 'volleyball', label: 'Волейбол' },
-    { value: 'tennis', label: 'Теннис' },
-    { value: 'running', label: 'Бег' },
-    { value: 'other', label: 'Другое' }
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,37 +34,70 @@ const CreateEventForm = ({ latitude, longitude, onCreate, onCancel }) => {
   };
 
   return (
-    <div className="create-event-form-overlay">
-      <div className="create-event-form">
-        <h3>Создать спортивное событие</h3>
+    <div className="create-event-form-overlay" onClick={onCancel}>
+      <div className="create-event-form" onClick={(e) => e.stopPropagation()}>
+        <h3>Создать событие</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="sportType">Вид спорта:</label>
-            <select
-              id="sportType"
-              value={sportType}
-              onChange={(e) => setSportType(e.target.value)}
-              required
-            >
-              {sportOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+            <label>Вид спорта</label>
+            <div className="sport-chips">
+              {SPORT_OPTIONS.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`sport-chip ${sportType === option.value ? 'active' : ''}`}
+                  onClick={() => setSportType(option.value)}
+                >
+                  <span className="material-symbols-outlined">{option.icon}</span>
+                  <span>{option.label}</span>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="maxPlayers">Максимум игроков:</label>
-            <input
-              type="number"
-              id="maxPlayers"
-              min="2"
-              max="50"
-              value={maxPlayers}
-              onChange={(e) => setMaxPlayers(parseInt(e.target.value))}
-              required
-            />
+            <label>Количество игроков</label>
+            <div className="players-selector">
+              <button
+                type="button"
+                className="players-btn"
+                onClick={() => setMaxPlayers(Math.max(2, maxPlayers - 1))}
+                disabled={maxPlayers <= 2}
+              >
+                <span className="material-symbols-outlined">remove</span>
+              </button>
+              <input
+                type="number"
+                className="players-input"
+                value={maxPlayers}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    setMaxPlayers('');
+                  } else {
+                    setMaxPlayers(parseInt(val) || '');
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (!val || val < 2) {
+                    setMaxPlayers(2);
+                  } else if (val > 50) {
+                    setMaxPlayers(50);
+                  }
+                }}
+                min="2"
+                max="50"
+              />
+              <button
+                type="button"
+                className="players-btn"
+                onClick={() => setMaxPlayers(Math.min(50, maxPlayers + 1))}
+                disabled={maxPlayers >= 50}
+              >
+                <span className="material-symbols-outlined">add</span>
+              </button>
+            </div>
           </div>
 
           <div className="form-actions">
