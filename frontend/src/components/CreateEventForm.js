@@ -34,8 +34,8 @@ const CreateEventForm = ({ latitude, longitude, onCreate, onCancel }) => {
   };
 
   return (
-    <div className="create-event-form-overlay">
-      <div className="create-event-form">
+    <div className="create-event-form-overlay" onClick={onCancel}>
+      <div className="create-event-form" onClick={(e) => e.stopPropagation()}>
         <h3>Создать событие</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-group">

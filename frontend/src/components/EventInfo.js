@@ -69,8 +69,8 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEven
   };
 
   return (
-    <div className="event-info-overlay">
-      <div className="event-info">
+    <div className="event-info-overlay" onClick={onClose}>
+      <div className="event-info" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={onClose}>×</button>
 
         <div className="event-header">

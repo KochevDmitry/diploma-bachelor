@@ -2,6 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import CreateEventForm from './CreateEventForm';
 import EventInfo from './EventInfo';
 
+// Перевод типов спорта
+const SPORT_LABELS = {
+  football: 'Футбол',
+  basketball: 'Баскетбол',
+  volleyball: 'Волейбол',
+  tennis: 'Теннис',
+  running: 'Бег',
+  other: 'Другое'
+};
+
+const getSportLabel = (sportType) => SPORT_LABELS[sportType] || sportType;
+
 const MapComponent = ({
   venues,
   events,
@@ -254,7 +266,7 @@ const MapComponent = ({
           align-items: center;
           gap: 6px;
         ">
-          <span style="font-family: 'Lexend', sans-serif;">${event.sport_type}</span>
+          <span style="font-family: 'Lexend', sans-serif;">${getSportLabel(event.sport_type)}</span>
           <span style="
             background: rgba(255,255,255,0.2);
             padding: 2px 8px;
