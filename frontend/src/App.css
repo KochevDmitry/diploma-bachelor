@@ -80,6 +80,59 @@
   overflow: hidden;
 }
 
+/* Filter Bar - floating glassmorphism chips */
+.filter-bar {
+  position: absolute;
+  top: var(--spacing-4);
+  left: var(--spacing-4);
+  z-index: 50;
+  display: inline-flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  padding: var(--spacing-3);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 24px -4px var(--shadow-ambient);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--surface-container-highest);
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filter-chip .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.filter-chip:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.filter-chip.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  box-shadow: 0 4px 12px -2px var(--shadow-key);
+}
+
+.filter-chip.active .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
+
 /* Modal overlay - glassmorphism */
 .modal-overlay {
   position: fixed;

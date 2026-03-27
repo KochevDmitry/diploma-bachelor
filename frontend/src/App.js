@@ -12,6 +12,17 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 const WS_URL = process.env.REACT_APP_WS_URL || '';
 const YANDEX_MAPS_API_KEY = process.env.REACT_APP_YANDEX_MAPS_API_KEY || '';
 
+// Типы спорта для фильтрации
+const SPORT_FILTERS = [
+  { id: 'all', label: 'Все', icon: 'sports' },
+  { id: 'football', label: 'Футбол', icon: 'sports_soccer' },
+  { id: 'basketball', label: 'Баскетбол', icon: 'sports_basketball' },
+  { id: 'volleyball', label: 'Волейбол', icon: 'sports_volleyball' },
+  { id: 'tennis', label: 'Теннис', icon: 'sports_tennis' },
+  { id: 'running', label: 'Бег', icon: 'directions_run' },
+  { id: 'other', label: 'Другое', icon: 'sports_score' },
+];
+
 function App() {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
@@ -24,6 +35,7 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   // Загрузка Yandex Maps API
   useEffect(() => {
@@ -436,6 +448,19 @@ function App() {
       </header>
       <div className="app-content">
         <div className="map-container">
+          {/* Filter Chips */}
+          <div className="filter-bar">
+            {SPORT_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                className={`filter-chip ${activeFilter === filter.id ? 'active' : ''}`}
+                onClick={() => setActiveFilter(filter.id)}
+              >
+                <span className="material-symbols-outlined">{filter.icon}</span>
+                <span>{filter.label}</span>
+              </button>
+            ))}
+          </div>
           <MapComponent
             venues={venues}
             events={mapEvents}
