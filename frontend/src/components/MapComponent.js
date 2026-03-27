@@ -246,34 +246,15 @@ const MapComponent = ({
 
       console.log(`📍 Adding event marker for ${event.sport_type} at [${lon}, ${lat}]`);
 
-      // Создаём HTML элемент для маркера события - новый дизайн
+      // Создаём HTML элемент для маркера события с пином
       const markerElement = document.createElement('div');
-      markerElement.className = 'event-marker';
+      markerElement.className = 'event-marker-wrapper';
       markerElement.innerHTML = `
-        <div style="
-          background: linear-gradient(135deg, #0049e6 0%, #829bff 100%);
-          color: #f2f1ff;
-          padding: 10px 16px;
-          border-radius: 9999px;
-          font-family: 'Inter', sans-serif;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 8px 20px -4px rgba(12, 14, 16, 0.2);
-          white-space: nowrap;
-          transition: all 0.25s ease;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        ">
-          <span style="font-family: 'Lexend', sans-serif;">${getSportLabel(event.sport_type)}</span>
-          <span style="
-            background: rgba(255,255,255,0.2);
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-size: 11px;
-          ">${event.current_players}/${event.max_players}</span>
+        <div class="event-marker-content">
+          <span class="event-marker-sport">${getSportLabel(event.sport_type)}</span>
+          <span class="event-marker-players">${event.current_players}/${event.max_players}</span>
         </div>
+        <div class="event-marker-pin"></div>
       `;
 
       markerElement.onclick = (e) => {

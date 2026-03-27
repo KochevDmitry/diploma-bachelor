@@ -225,3 +225,63 @@ code {
   background: var(--surface-container-highest);
   color: var(--on-surface-variant);
 }
+
+/* Event Map Markers with Pin */
+.event-marker-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transform: translate(-50%, -100%);
+  transition: transform 0.2s ease;
+}
+
+.event-marker-wrapper:hover {
+  transform: translate(-50%, -100%) scale(1.08);
+}
+
+.event-marker-content {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  padding: 10px 16px;
+  border-radius: 9999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px -4px rgba(12, 14, 16, 0.25);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event-marker-sport {
+  font-family: 'Lexend', sans-serif;
+}
+
+.event-marker-players {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+}
+
+.event-marker-pin {
+  position: relative;
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, var(--primary-container) 0%, var(--primary) 100%);
+}
+
+.event-marker-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 73, 230, 0.4);
+}
