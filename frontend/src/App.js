@@ -463,7 +463,7 @@ function App() {
           </div>
           <MapComponent
             venues={venues}
-            events={mapEvents}
+            events={activeFilter === 'all' ? mapEvents : mapEvents.filter(e => e.sport_type === activeFilter)}
             onVenueSelect={handleVenueSelect}
             onEventSelect={() => {}} // Пока не используется
             onCreateEvent={handleCreateMapEvent}
