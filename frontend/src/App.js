@@ -4,6 +4,9 @@ import io from 'socket.io-client';
 import MapComponent from './components/MapComponent';
 import VenueInfo from './components/VenueInfo';
 import UserSidebar from './components/UserSidebar';
+import MyEventsOverlay from './components/MyEventsOverlay';
+import HistoryOverlay from './components/HistoryOverlay';
+import EventInfo from './components/EventInfo';
 import LoginForm from './components/LoginForm';
 import CreateEventForm from './components/CreateEventForm';
 import './App.css';
@@ -35,6 +38,9 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUserSidebar, setShowUserSidebar] = useState(false);
+  const [showMyEvents, setShowMyEvents] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedEventFromList, setSelectedEventFromList] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
 
   // Загрузка Yandex Maps API
@@ -493,12 +499,83 @@ function App() {
         {showUserSidebar && user && (
           <UserSidebar
             user={user}
-            apiUrl={API_URL}
             onLogout={() => {
               handleLogout();
               setShowUserSidebar(false);
             }}
             onClose={() => setShowUserSidebar(false)}
+            onMyEventsClick={() => {
+              setShowUserSidebar(false);
+              setShowMyEvents(true);
+            }}
+            onHistoryClick={() => {
+              setShowUserSidebar(false);
+              setShowHistory(true);
+            }}
+          />
+        )}
+
+        {showMyEvents && user && (
+          <MyEventsOverlay
+            user={user}
+            apiUrl={API_URL}
+            onClose={() => {
+              setShowMyEvents(false);
+              setShowUserSidebar(true); // Возврат в сайдбар
+            }}
+            onEventClick={(event) => {
+              setShowMyEvents(false);
+              setSelectedEventFromList({ ...event, _returnTo: 'myEvents' });
+            }}
+          />
+        )}
+
+        {showHistory && user && (
+          <HistoryOverlay
+            user={user}
+            apiUrl={API_URL}
+            onClose={() => {
+              setShowHistory(false);
+              setShowUserSidebar(true); // Возврат в сайдбар
+            }}
+          />
+        )}
+
+        {selectedEventFromList && (
+          <EventInfo
+            event={selectedEventFromList}
+            currentUser={user}
+            onJoinEvent={async (eventId) => {
+              await handleJoinMapEvent(eventId);
+              const returnTo = selectedEventFromList._returnTo;
+              setSelectedEventFromList(null);
+              if (returnTo === 'myEvents') setShowMyEvents(true);
+              else if (returnTo === 'history') setShowHistory(true);
+            }}
+            onLeaveEvent={async (eventId) => {
+              await handleLeaveMapEvent(eventId);
+              const returnTo = selectedEventFromList._returnTo;
+              setSelectedEventFromList(null);
+              if (returnTo === 'myEvents') setShowMyEvents(true);
+              else if (returnTo === 'history') setShowHistory(true);
+            }}
+            onFinishEvent={async (eventId) => {
+              await handleFinishMapEvent(eventId);
+              const returnTo = selectedEventFromList._returnTo;
+              setSelectedEventFromList(null);
+              if (returnTo === 'myEvents') setShowMyEvents(true);
+              else if (returnTo === 'history') setShowHistory(true);
+            }}
+            onUpdateEvent={async (eventId, updates) => {
+              const updated = await handleUpdateMapEvent(eventId, updates);
+              setSelectedEventFromList({ ...updated, _returnTo: selectedEventFromList._returnTo });
+            }}
+            onClose={() => {
+              const returnTo = selectedEventFromList._returnTo;
+              setSelectedEventFromList(null);
+              if (returnTo === 'myEvents') setShowMyEvents(true);
+              else if (returnTo === 'history') setShowHistory(true);
+            }}
           />
         )}
       </div>

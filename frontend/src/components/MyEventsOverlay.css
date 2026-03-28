@@ -1,0 +1,287 @@
+/* My Events Overlay */
+.my-events-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(12, 14, 16, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.my-events-modal {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px -12px var(--shadow-key);
+  animation: slideUp var(--transition-normal) ease-out;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header */
+.my-events-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing-6);
+  background: var(--surface-container-low);
+}
+
+.my-events-title h2 {
+  font-family: 'Lexend', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin: 0 0 var(--spacing-1) 0;
+}
+
+.my-events-title p {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
+  margin: 0;
+}
+
+.my-events-close {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.my-events-close .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--on-surface-variant);
+}
+
+.my-events-close:hover {
+  background: var(--surface-container-highest);
+}
+
+.my-events-close:hover .material-symbols-outlined {
+  color: var(--on-surface);
+}
+
+/* Content */
+.my-events-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-4) var(--spacing-6) var(--spacing-6);
+}
+
+.my-events-empty {
+  text-align: center;
+  color: var(--on-surface-variant);
+  padding: var(--spacing-10) 0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Sections */
+.my-events-section {
+  margin-bottom: var(--spacing-6);
+}
+
+.my-events-section:last-child {
+  margin-bottom: 0;
+}
+
+.my-events-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.my-events-section-header .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--primary);
+}
+
+.my-events-section-header h3 {
+  font-family: 'Lexend', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin: 0;
+  flex: 1;
+}
+
+.my-events-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.my-events-empty-section {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
+  padding: var(--spacing-4);
+  text-align: center;
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+}
+
+/* Event List */
+.my-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+/* Event Card */
+.my-event-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.my-event-card:hover {
+  background: var(--surface-container);
+  transform: translateX(4px);
+}
+
+.my-event-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.my-event-card-icon .material-symbols-outlined {
+  font-size: 24px;
+  color: var(--on-primary);
+}
+
+.my-event-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.my-event-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-1);
+}
+
+.my-event-card-sport {
+  font-family: 'Lexend', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.my-event-card-status {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.my-event-card-status.status-waiting {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.my-event-card-status.status-full {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.my-event-card-status.status-started {
+  background: var(--tertiary-container);
+  color: var(--on-surface);
+}
+
+.my-event-card-meta {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-1);
+}
+
+.my-event-card-date,
+.my-event-card-players {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  color: var(--on-surface-variant);
+}
+
+.my-event-card-date .material-symbols-outlined,
+.my-event-card-players .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.my-event-card-spots {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--secondary);
+}
+
+.my-event-card-arrow {
+  flex-shrink: 0;
+}
+
+.my-event-card-arrow .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--on-surface-variant);
+  transition: transform var(--transition-fast);
+}
+
+.my-event-card:hover .my-event-card-arrow .material-symbols-outlined {
+  transform: translateX(4px);
+  color: var(--primary);
+}

@@ -1,0 +1,240 @@
+/* History Overlay */
+.history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(12, 14, 16, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.history-modal {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px -12px var(--shadow-key);
+  animation: slideUp var(--transition-normal) ease-out;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing-6);
+  background: var(--surface-container-low);
+}
+
+.history-title h2 {
+  font-family: 'Lexend', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin: 0 0 var(--spacing-1) 0;
+}
+
+.history-title p {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
+  margin: 0;
+}
+
+.history-close {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.history-close .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--on-surface-variant);
+}
+
+.history-close:hover {
+  background: var(--surface-container-highest);
+}
+
+.history-close:hover .material-symbols-outlined {
+  color: var(--on-surface);
+}
+
+/* Content */
+.history-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-4) var(--spacing-6) var(--spacing-6);
+}
+
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--on-surface-variant);
+  padding: var(--spacing-10) 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.history-empty .material-symbols-outlined {
+  font-size: 48px;
+  margin-bottom: var(--spacing-4);
+  opacity: 0.5;
+}
+
+.history-empty p {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 var(--spacing-2) 0;
+  color: var(--on-surface);
+}
+
+.history-empty-hint {
+  font-size: 0.875rem;
+}
+
+/* History List */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+/* History Card */
+.history-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+}
+
+.history-card:hover {
+  background: var(--surface-container);
+}
+
+.history-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-highest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.history-card-icon .material-symbols-outlined {
+  font-size: 24px;
+  color: var(--on-surface-variant);
+}
+
+.history-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-1);
+}
+
+.history-card-sport {
+  font-family: 'Lexend', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.history-card-badge {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.history-card-meta {
+  margin-bottom: var(--spacing-1);
+}
+
+.history-card-date {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8125rem;
+  color: var(--on-surface-variant);
+}
+
+.history-card-date .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.history-card-players {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  color: var(--on-surface-variant);
+}
+
+.history-card-players .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.history-card-status {
+  flex-shrink: 0;
+}
+
+.history-card-status .material-symbols-outlined {
+  font-size: 24px;
+  color: var(--primary);
+  font-variation-settings: 'FILL' 1;
+}
