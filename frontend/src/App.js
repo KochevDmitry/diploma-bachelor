@@ -427,7 +427,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>SportApp - Поиск игроков</h1>
+        <h1>SportSpot</h1>
         <div className="user-info">
           {user ? (
             <>

@@ -3,10 +3,14 @@ import './EventInfo.css';
 
 const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEvent, onUpdateEvent, onClose }) => {
   console.log('EventInfo opened with event:', event);
-  
-  const isCreator = currentUser && event.creator_id === currentUser.id;
-  const isParticipant = currentUser && event.participants && event.participants.includes(currentUser.id);
+  console.log('currentUser:', currentUser);
+  console.log('participants:', event.participants);
+
+  const isCreator = currentUser && String(event.creator_id) === String(currentUser.id);
+  const isParticipant = currentUser && event.participants && event.participants.map(p => String(p)).includes(String(currentUser.id));
   const canJoin = !isCreator && !isParticipant && event.status === 'waiting';
+
+  console.log('isCreator:', isCreator, 'isParticipant:', isParticipant, 'canJoin:', canJoin);
 
   const handleJoin = async () => {
     try {
