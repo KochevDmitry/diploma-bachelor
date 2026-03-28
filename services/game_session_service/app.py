@@ -118,13 +118,12 @@ def get_session_participants(session_id):
 
 
 def set_session_participants(session_id, user_ids):
-    """Сохранение участников сессии в Redis"""
+    """Сохранение участников сессии в Redis (полная замена)"""
     key = f'session:{session_id}:participants'
+    redis_client.delete(key)  # Сначала удаляем старое множество
     if user_ids:
         redis_client.sadd(key, *user_ids)
         redis_client.expire(key, 3600 * 24)  # TTL 24 часа
-    else:
-        redis_client.delete(key)
 
 
 @app.route('/health', methods=['GET'])

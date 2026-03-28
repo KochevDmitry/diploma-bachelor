@@ -54,13 +54,15 @@ const GameHistory = ({ userId, apiUrl, onClose }) => {
   };
 
   return (
-    <div className="game-history">
-      <div className="game-history-header">
-        <h2>Мои записи</h2>
-        <button className="game-history-close" onClick={onClose}>&times;</button>
-      </div>
+    <>
+      <div className="game-history-overlay" onClick={onClose} />
+      <div className="game-history">
+        <div className="game-history-header">
+          <h2>Мои записи</h2>
+          <button className="game-history-close" onClick={onClose}>&times;</button>
+        </div>
 
-      <div className="game-history-list">
+        <div className="game-history-list">
         {loading && <p className="game-history-empty">Загрузка...</p>}
 
         {!loading && history.length === 0 && (
@@ -88,6 +90,7 @@ const GameHistory = ({ userId, apiUrl, onClose }) => {
         ))}
       </div>
     </div>
+    </>
   );
 };
 

@@ -3,7 +3,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import MapComponent from './components/MapComponent';
 import VenueInfo from './components/VenueInfo';
-import GameHistory from './components/GameHistory';
+import UserSidebar from './components/UserSidebar';
 import LoginForm from './components/LoginForm';
 import CreateEventForm from './components/CreateEventForm';
 import './App.css';
@@ -34,7 +34,7 @@ function App() {
   const [mapEvents, setMapEvents] = useState([]);
   const [socket, setSocket] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showUserSidebar, setShowUserSidebar] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
 
   // Загрузка Yandex Maps API
@@ -427,22 +427,28 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>SportApp - Поиск игроков</h1>
-        <div className="user-info">
+        <h1>SportSpot</h1>
+        <div className="header-actions">
           {user ? (
             <>
-              <span>Привет, {user.username}!</span>
-              <button onClick={() => {
-                console.log('📋 Кнопка "Мои записи" нажата. showHistory было:', showHistory, '-> станет:', !showHistory);
-                console.log('📋 user:', user);
-                setShowHistory(!showHistory);
-              }}>
-                Мои записи
+              <button className="header-icon-btn" title="Уведомления">
+                <span className="material-symbols-outlined">notifications</span>
               </button>
-              <button onClick={handleLogout}>Выйти</button>
+              <button className="header-icon-btn" title="Настройки">
+                <span className="material-symbols-outlined">settings</span>
+              </button>
+              <button
+                className="header-avatar-btn"
+                onClick={() => setShowUserSidebar(true)}
+                title={user.username}
+              >
+                <span className="material-symbols-outlined">person</span>
+              </button>
             </>
           ) : (
-            <button onClick={() => setShowLoginModal(true)}>Войти</button>
+            <button className="header-login-btn" onClick={() => setShowLoginModal(true)}>
+              Войти
+            </button>
           )}
         </div>
       </header>
@@ -463,7 +469,7 @@ function App() {
           </div>
           <MapComponent
             venues={venues}
-            events={mapEvents}
+            events={activeFilter === 'all' ? mapEvents : mapEvents.filter(e => e.sport_type === activeFilter)}
             onVenueSelect={handleVenueSelect}
             onEventSelect={() => {}} // Пока не используется
             onCreateEvent={handleCreateMapEvent}
@@ -475,7 +481,7 @@ function App() {
             currentUser={user}
           />
         </div>
-        {selectedVenue && !showHistory && (
+        {selectedVenue && !showUserSidebar && (
           <VenueInfo
             venue={selectedVenue}
             sessions={venueSessions}
@@ -484,12 +490,15 @@ function App() {
             onJoinSession={handleJoinSession}
           />
         )}
-        {console.log('📋 RENDER CHECK: showHistory=', showHistory, 'user=', !!user)}
-        {showHistory && user && (
-          <GameHistory
-            userId={user.id}
+        {showUserSidebar && user && (
+          <UserSidebar
+            user={user}
             apiUrl={API_URL}
-            onClose={() => setShowHistory(false)}
+            onLogout={() => {
+              handleLogout();
+              setShowUserSidebar(false);
+            }}
+            onClose={() => setShowUserSidebar(false)}
           />
         )}
       </div>
