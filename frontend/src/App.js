@@ -521,7 +521,7 @@ function App() {
             apiUrl={API_URL}
             onClose={() => {
               setShowMyEvents(false);
-              setShowUserSidebar(true); // Возврат в сайдбар
+              // setShowUserSidebar(true); // Возврат в сайдбар (закомментировано: возврат на карту)
             }}
             onEventClick={(event) => {
               setShowMyEvents(false);
@@ -536,7 +536,7 @@ function App() {
             apiUrl={API_URL}
             onClose={() => {
               setShowHistory(false);
-              setShowUserSidebar(true); // Возврат в сайдбар
+              // setShowUserSidebar(true); // Возврат в сайдбар (закомментировано: возврат на карту)
             }}
           />
         )}
