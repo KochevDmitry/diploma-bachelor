@@ -6,6 +6,7 @@ import VenueInfo from './components/VenueInfo';
 import UserSidebar from './components/UserSidebar';
 import MyEventsOverlay from './components/MyEventsOverlay';
 import HistoryOverlay from './components/HistoryOverlay';
+import SettingsOverlay from './components/SettingsOverlay';
 import EventInfo from './components/EventInfo';
 import LoginForm from './components/LoginForm';
 import CreateEventForm from './components/CreateEventForm';
@@ -40,6 +41,7 @@ function App() {
   const [showUserSidebar, setShowUserSidebar] = useState(false);
   const [showMyEvents, setShowMyEvents] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedEventFromList, setSelectedEventFromList] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
 
@@ -440,7 +442,7 @@ function App() {
               <button className="header-icon-btn" title="Уведомления">
                 <span className="material-symbols-outlined">notifications</span>
               </button>
-              <button className="header-icon-btn" title="Настройки">
+              <button className="header-icon-btn" title="Настройки" onClick={() => setShowSettings(true)}>
                 <span className="material-symbols-outlined">settings</span>
               </button>
               <button
@@ -537,6 +539,30 @@ function App() {
             onClose={() => {
               setShowHistory(false);
               // setShowUserSidebar(true); // Возврат в сайдбар (закомментировано: возврат на карту)
+            }}
+          />
+        )}
+
+        {showSettings && user && (
+          <SettingsOverlay
+            user={user}
+            onClose={() => setShowSettings(false)}
+            onUpdateProfile={async (profileData) => {
+              try {
+                const response = await axios.post(`${API_URL}/auth/profile`, profileData);
+                if (response.data.user) {
+                  setUser(response.data.user);
+                }
+                if (response.data.accessToken) {
+                  localStorage.setItem('accessToken', response.data.accessToken);
+                  setAccessToken(response.data.accessToken);
+                  axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
+                }
+                return response.data;
+              } catch (error) {
+                console.error('Error updating profile:', error);
+                throw error;
+              }
             }}
           />
         )}

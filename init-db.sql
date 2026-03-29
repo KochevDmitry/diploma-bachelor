@@ -9,9 +9,18 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    bio TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Добавление колонки bio если её нет (для миграции существующей БД)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'bio') THEN
+        ALTER TABLE users ADD COLUMN bio TEXT DEFAULT '';
+    END IF;
+END $$;
 
 -- Таблица площадок (будет использоваться Map Service)
 CREATE TABLE IF NOT EXISTS venues (
