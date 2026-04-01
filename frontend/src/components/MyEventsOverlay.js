@@ -27,10 +27,16 @@ const STATUS_LABELS = {
   finished: 'Завершена',
 };
 
-const MyEventsOverlay = ({ user, apiUrl, onClose, onEventClick }) => {
+const MyEventsOverlay = ({ user, apiUrl, onClose, onEventClick, skipAnimation }) => {
   const [createdEvents, setCreatedEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -117,14 +123,14 @@ const MyEventsOverlay = ({ user, apiUrl, onClose, onEventClick }) => {
   );
 
   return (
-    <div className="my-events-overlay" onClick={onClose}>
+    <div className={`my-events-overlay ${isClosing ? 'closing' : ''} ${skipAnimation ? 'fast' : ''}`} onClick={handleClose}>
       <div className="my-events-modal" onClick={(e) => e.stopPropagation()}>
         <div className="my-events-header">
           <div className="my-events-title">
             <h2>Мои события</h2>
             <p>Управляйте своими мероприятиями</p>
           </div>
-          <button className="my-events-close" onClick={onClose}>
+          <button className="my-events-close" onClick={handleClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>

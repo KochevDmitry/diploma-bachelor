@@ -12,12 +12,39 @@
   justify-content: center;
   align-items: center;
   z-index: 2000;
-  animation: fadeIn var(--transition-fast) ease-out;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.my-events-overlay.closing {
+  animation: fadeOut 200ms ease-out forwards;
+}
+
+.my-events-overlay.closing .my-events-modal {
+  animation: slideDown 200ms ease-out forwards;
+}
+
+.my-events-overlay.fast .my-events-modal {
+  animation: slideUp 80ms ease-out !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
 }
 
 .my-events-modal {
@@ -29,7 +56,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 48px -12px var(--shadow-key);
-  animation: slideUp var(--transition-normal) ease-out;
+  animation: slideUp 200ms ease-out;
   overflow: hidden;
 }
 

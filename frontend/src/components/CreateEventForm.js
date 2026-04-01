@@ -14,6 +14,12 @@ const CreateEventForm = ({ latitude, longitude, onCreate, onCancel }) => {
   const [sportType, setSportType] = useState('football');
   const [maxPlayers, setMaxPlayers] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleCancel = () => {
+    setIsClosing(true);
+    setTimeout(() => onCancel(), 200);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +40,7 @@ const CreateEventForm = ({ latitude, longitude, onCreate, onCancel }) => {
   };
 
   return (
-    <div className="create-event-form-overlay" onClick={onCancel}>
+    <div className={`create-event-form-overlay ${isClosing ? 'closing' : ''}`} onClick={handleCancel}>
       <div className="create-event-form" onClick={(e) => e.stopPropagation()}>
         <h3>Создать событие</h3>
         <form onSubmit={handleSubmit}>
@@ -103,7 +109,7 @@ const CreateEventForm = ({ latitude, longitude, onCreate, onCancel }) => {
           <div className="form-actions">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={handleCancel}
               className="cancel-btn"
               disabled={isSubmitting}
             >

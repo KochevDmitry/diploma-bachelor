@@ -38,12 +38,23 @@ function App() {
   const [mapEvents, setMapEvents] = useState([]);
   const [socket, setSocket] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isClosingLoginModal, setIsClosingLoginModal] = useState(false);
   const [showUserSidebar, setShowUserSidebar] = useState(false);
   const [showMyEvents, setShowMyEvents] = useState(false);
+  const [skipMyEventsAnimation, setSkipMyEventsAnimation] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [skipHistoryAnimation, setSkipHistoryAnimation] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedEventFromList, setSelectedEventFromList] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+
+  const handleCloseLoginModal = () => {
+    setIsClosingLoginModal(true);
+    setTimeout(() => {
+      setShowLoginModal(false);
+      setIsClosingLoginModal(false);
+    }, 200);
+  };
 
   // Загрузка Yandex Maps API
   useEffect(() => {
@@ -521,8 +532,10 @@ function App() {
           <MyEventsOverlay
             user={user}
             apiUrl={API_URL}
+            skipAnimation={skipMyEventsAnimation}
             onClose={() => {
               setShowMyEvents(false);
+              setSkipMyEventsAnimation(false);
               // setShowUserSidebar(true); // Возврат в сайдбар (закомментировано: возврат на карту)
             }}
             onEventClick={(event) => {
@@ -536,8 +549,10 @@ function App() {
           <HistoryOverlay
             user={user}
             apiUrl={API_URL}
+            skipAnimation={skipHistoryAnimation}
             onClose={() => {
               setShowHistory(false);
+              setSkipHistoryAnimation(false);
               // setShowUserSidebar(true); // Возврат в сайдбар (закомментировано: возврат на карту)
             }}
           />
@@ -599,16 +614,21 @@ function App() {
             onClose={() => {
               const returnTo = selectedEventFromList._returnTo;
               setSelectedEventFromList(null);
-              if (returnTo === 'myEvents') setShowMyEvents(true);
-              else if (returnTo === 'history') setShowHistory(true);
+              if (returnTo === 'myEvents') {
+                setSkipMyEventsAnimation(true);
+                setShowMyEvents(true);
+              } else if (returnTo === 'history') {
+                setSkipHistoryAnimation(true);
+                setShowHistory(true);
+              }
             }}
           />
         )}
       </div>
       {showLoginModal && (
-        <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
+        <div className={`modal-overlay ${isClosingLoginModal ? 'closing' : ''}`} onClick={handleCloseLoginModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowLoginModal(false)}>×</button>
+            <button className="modal-close" onClick={handleCloseLoginModal}>×</button>
             <LoginForm onLogin={handleLoginSuccess} apiUrl={API_URL} />
           </div>
         </div>

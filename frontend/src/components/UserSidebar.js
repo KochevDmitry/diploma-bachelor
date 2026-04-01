@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './UserSidebar.css';
 
 const UserSidebar = ({ user, onLogout, onClose, onMyEventsClick, onHistoryClick }) => {
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
   return (
     <>
-      <div className="user-sidebar-overlay" onClick={onClose} />
-      <div className="user-sidebar">
+      <div className={`user-sidebar-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose} />
+      <div className={`user-sidebar ${isClosing ? 'closing' : ''}`}>
         {/* User Profile Header */}
         <div className="user-sidebar-profile">
           <div className="user-avatar">
@@ -15,7 +22,7 @@ const UserSidebar = ({ user, onLogout, onClose, onMyEventsClick, onHistoryClick 
             <h2 className="user-name">{user.username}</h2>
             <span className="user-email">{user.email || 'Спортсмен'}</span>
           </div>
-          <button className="sidebar-close-btn" onClick={onClose}>
+          <button className="sidebar-close-btn" onClick={handleClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './SettingsOverlay.css';
 
 const TABS = [
@@ -9,14 +9,23 @@ const TABS = [
 
 const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
   const [activeTab, setActiveTab] = useState('profile');
+  // Используем useRef чтобы инициализировать formData только один раз
+  const initialUser = useRef(user);
   const [formData, setFormData] = useState({
-    username: user?.username || '',
-    email: user?.email || '',
-    bio: user?.bio || '',
+    username: initialUser.current?.username || '',
+    email: initialUser.current?.email || '',
+    bio: initialUser.current?.bio || '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
   const [errorMessage, setErrorMessage] = useState('');
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -88,12 +97,6 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
       </div>
 
       <div className="settings-actions">
-        {saveStatus === 'success' && (
-          <span className="settings-status settings-status-success">
-            <span className="material-symbols-outlined">check_circle</span>
-            Сохранено
-          </span>
-        )}
         {saveStatus === 'error' && (
           <span className="settings-status settings-status-error">
             <span className="material-symbols-outlined">error</span>
@@ -101,11 +104,11 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
           </span>
         )}
         <button
-          className="settings-btn settings-btn-primary"
+          className={`settings-btn settings-btn-primary ${saveStatus === 'success' ? 'success' : ''}`}
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || saveStatus === 'success'}
         >
-          {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
+          {isSaving ? 'Сохранение...' : saveStatus === 'success' ? 'Сохранено' : 'Сохранить изменения'}
         </button>
       </div>
     </div>
@@ -131,6 +134,15 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
     </div>
   );
 
+  const handleTabChange = (tabId) => {
+    if (tabId === activeTab) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setActiveTab(tabId);
+      setTimeout(() => setIsTransitioning(false), 20);
+    }, 150);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'profile':
@@ -145,7 +157,7 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
   };
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
+    <div className={`settings-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="settings-header">
@@ -153,7 +165,7 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
             <h2>Настройки</h2>
             <p>Управляйте своим аккаунтом</p>
           </div>
-          <button className="settings-close" onClick={onClose}>
+          <button className="settings-close" onClick={handleClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -166,7 +178,7 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
               <button
                 key={tab.id}
                 className={`settings-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               >
                 <span className="material-symbols-outlined">{tab.icon}</span>
                 <span>{tab.label}</span>
@@ -175,7 +187,7 @@ const SettingsOverlay = ({ user, onClose, onUpdateProfile }) => {
           </div>
 
           {/* Content */}
-          <div className="settings-content">
+          <div className={`settings-content ${isTransitioning ? 'transitioning' : ''}`}>
             {renderTabContent()}
           </div>
         </div>
