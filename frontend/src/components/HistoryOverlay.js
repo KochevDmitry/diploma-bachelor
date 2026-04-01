@@ -20,9 +20,15 @@ const SPORT_ICONS = {
   other: 'sports_score',
 };
 
-const HistoryOverlay = ({ user, apiUrl, onClose }) => {
+const HistoryOverlay = ({ user, apiUrl, onClose, skipAnimation }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -54,14 +60,14 @@ const HistoryOverlay = ({ user, apiUrl, onClose }) => {
   };
 
   return (
-    <div className="history-overlay" onClick={onClose}>
+    <div className={`history-overlay ${isClosing ? 'closing' : ''} ${skipAnimation ? 'fast' : ''}`} onClick={handleClose}>
       <div className="history-modal" onClick={(e) => e.stopPropagation()}>
         <div className="history-header">
           <div className="history-title">
             <h2>История</h2>
             <p>Ваши прошедшие мероприятия</p>
           </div>
-          <button className="history-close" onClick={onClose}>
+          <button className="history-close" onClick={handleClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>

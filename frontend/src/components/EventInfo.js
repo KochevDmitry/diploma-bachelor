@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './EventInfo.css';
 
 const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEvent, onUpdateEvent, onClose }) => {
+  const [isClosing, setIsClosing] = useState(false);
+
+  // Если возвращаемся в список - закрываем мгновенно без анимации
+  const handleClose = () => {
+    if (event._returnTo) {
+      onClose();
+    } else {
+      setIsClosing(true);
+      setTimeout(() => onClose(), 200);
+    }
+  };
+
   console.log('EventInfo opened with event:', event);
   console.log('currentUser:', currentUser);
   console.log('participants:', event.participants);
@@ -73,9 +85,9 @@ const EventInfo = ({ event, currentUser, onJoinEvent, onLeaveEvent, onFinishEven
   };
 
   return (
-    <div className="event-info-overlay" onClick={onClose}>
+    <div className={`event-info-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
       <div className="event-info" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn" onClick={onClose}>×</button>
+        <button className="close-btn" onClick={handleClose}>×</button>
 
         <div className="event-header">
           <h3>{getSportLabel(event.sport_type)}</h3>

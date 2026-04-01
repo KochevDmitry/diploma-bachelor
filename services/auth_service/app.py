@@ -28,19 +28,21 @@ db = SQLAlchemy(app)
 # Модель пользователя
 class User(db.Model):
     __tablename__ = 'users'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    bio = db.Column(db.Text, nullable=True, default='')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def to_dict(self):
         return {
             'id': self.id,
             'username': self.username,
             'email': self.email,
+            'bio': self.bio or '',
             'created_at': self.created_at.isoformat()
         }
 
@@ -177,25 +179,25 @@ def refresh():
     """Обновление Access токена используя Refresh токен"""
     data = request.get_json() or {}
     refresh_token = data.get('refreshToken') or request.headers.get('Authorization', '').replace('Bearer ', '')
-    
+
     if not refresh_token:
         return jsonify({'error': 'Refresh token missing'}), 401
-    
+
     try:
         payload = jwt.decode(refresh_token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
-        
+
         # Проверяем что это именно Refresh token
         if payload.get('type') != 'refresh':
             return jsonify({'error': 'Invalid token type'}), 401
-        
+
         user = User.query.get(payload['user_id'])
-        
+
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
+
         # Генерируем новый Access token
         access_token = generate_access_token(user)
-        
+
         return jsonify({
             'message': 'Token refreshed successfully',
             'accessToken': access_token,
@@ -205,6 +207,69 @@ def refresh():
         return jsonify({'error': 'Refresh token expired, please login again'}), 401
     except jwt.InvalidTokenError:
         return jsonify({'error': 'Invalid refresh token'}), 401
+
+
+@app.route('/auth/profile', methods=['PUT', 'POST'])
+def update_profile():
+    """Обновление профиля пользователя"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user = User.query.get(payload['user_id'])
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Обновляем username если передан и отличается
+        if 'username' in data and data['username'] != user.username:
+            existing = User.query.filter_by(username=data['username']).first()
+            if existing and existing.id != user.id:
+                return jsonify({'error': 'Username already taken'}), 400
+            user.username = data['username']
+
+        # Обновляем email если передан и отличается
+        if 'email' in data and data['email'] != user.email:
+            existing = User.query.filter_by(email=data['email']).first()
+            if existing and existing.id != user.id:
+                return jsonify({'error': 'Email already taken'}), 400
+            user.email = data['email']
+
+        # Обновляем bio если передан
+        if 'bio' in data:
+            user.bio = data['bio']
+
+        try:
+            db.session.commit()
+
+            # Генерируем новый токен с обновленным username
+            new_access_token = generate_access_token(user)
+
+            return jsonify({
+                'message': 'Profile updated successfully',
+                'user': user.to_dict(),
+                'accessToken': new_access_token
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
 
 
 def create_default_user():

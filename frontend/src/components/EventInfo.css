@@ -12,12 +12,35 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn var(--transition-fast) ease-out;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.event-info-overlay.closing {
+  animation: fadeOut 200ms ease-out forwards;
+}
+
+.event-info-overlay.closing .event-info {
+  animation: slideDown 200ms ease-out forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
 }
 
 @keyframes slideUp {
@@ -42,7 +65,7 @@
   min-width: 380px;
   max-width: 460px;
   position: relative;
-  animation: slideUp var(--transition-normal) ease-out;
+  animation: slideUp 200ms ease-out;
 }
 
 .event-info .close-btn {
