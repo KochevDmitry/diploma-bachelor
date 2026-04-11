@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     bio TEXT DEFAULT '',
+    avatar_url VARCHAR(500) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,6 +20,14 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'bio') THEN
         ALTER TABLE users ADD COLUMN bio TEXT DEFAULT '';
+    END IF;
+END $$;
+
+-- Добавление колонки avatar_url если её нет (для миграции существующей БД)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'avatar_url') THEN
+        ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) DEFAULT NULL;
     END IF;
 END $$;
 

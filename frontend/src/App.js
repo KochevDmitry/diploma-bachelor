@@ -457,11 +457,19 @@ function App() {
                 <span className="material-symbols-outlined">settings</span>
               </button>
               <button
-                className="header-avatar-btn"
+                className={`header-avatar-btn ${user.avatar_url ? 'has-avatar' : ''}`}
                 onClick={() => setShowUserSidebar(true)}
                 title={user.username}
               >
-                <span className="material-symbols-outlined">person</span>
+                {user.avatar_url ? (
+                  <img
+                    src={`${API_URL}${user.avatar_url}`}
+                    alt={user.username}
+                    className="header-avatar-img"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined">person</span>
+                )}
               </button>
             </>
           ) : (
@@ -579,6 +587,7 @@ function App() {
                 throw error;
               }
             }}
+            onUserUpdate={(updatedUser) => setUser(updatedUser)}
           />
         )}
 
