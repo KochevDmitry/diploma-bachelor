@@ -28,7 +28,7 @@ GAME_SERVICE_URL = os.getenv('GAME_SERVICE_URL', 'http://game_session_service:50
 NOTIFICATION_SERVICE_URL = os.getenv('NOTIFICATION_SERVICE_URL', 'http://notification_service:5004')
 
 # Маршруты, не требующие аутентификации
-PUBLIC_ROUTES = ['/auth/register', '/auth/login', '/api/auth/register', '/api/auth/login', '/health', '/api/map/venues', '/api/games/venue/', '/api/games/map', '/auth/avatars/', '/api/auth/avatars/']
+PUBLIC_ROUTES = ['/auth/register', '/auth/login', '/api/auth/register', '/api/auth/login', '/health', '/api/map/venues', '/api/games/venue/', '/api/games/map', '/auth/avatars/', '/api/auth/avatars/', '/api/notifications/health']
 
 
 def verify_token(f):
@@ -171,7 +171,8 @@ def auth_proxy(path):
     # Специальная обработка для отдачи аватаров (бинарные данные)
     if path.startswith('avatars/'):
         return proxy_file_download(AUTH_SERVICE_URL, f'/auth/{path}')
-    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, request.get_json())
+    data = request.get_json(silent=True) if request.method in ['POST', 'PUT'] else None
+    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, data)
 
 
 # API Auth Service routes (with /api prefix)
@@ -184,7 +185,8 @@ def api_auth_proxy(path):
     # Специальная обработка для отдачи аватаров (бинарные данные)
     if path.startswith('avatars/'):
         return proxy_file_download(AUTH_SERVICE_URL, f'/auth/{path}')
-    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, request.get_json())
+    data = request.get_json(silent=True) if request.method in ['POST', 'PUT'] else None
+    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, data)
 
 
 

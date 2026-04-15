@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import MapComponent from './components/MapComponent';
@@ -10,6 +10,7 @@ import SettingsOverlay from './components/SettingsOverlay';
 import EventInfo from './components/EventInfo';
 import LoginForm from './components/LoginForm';
 import CreateEventForm from './components/CreateEventForm';
+import NotificationsModal from './components/NotificationsModal';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -47,6 +48,24 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [selectedEventFromList, setSelectedEventFromList] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Загрузка уведомлений из БД
+  const loadNotifications = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/auth/notifications`);
+      const notifs = response.data.map(n => ({
+        ...n,
+        read: n.read || false
+      }));
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter(n => !n.read).length);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
 
   const handleCloseLoginModal = () => {
     setIsClosingLoginModal(true);
@@ -142,6 +161,7 @@ function App() {
           const response = await axios.post(`${API_URL || ''}/auth/verify`);
           console.log('✅ Токен валидный, пользователь восстановлен:', response.data.user.username);
           setUser(response.data.user);
+          loadNotifications(); // Загружаем уведомления
           setIsInitializing(false);
           return;
         } catch (error) {
@@ -160,6 +180,7 @@ function App() {
             axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
             console.log('✅ Токен обновлен, пользователь восстановлен:', refreshResponse.data.user.username);
             setUser(refreshResponse.data.user);
+            loadNotifications(); // Загружаем уведомления
             setIsInitializing(false);
             return;
           } catch (refreshError) {
@@ -188,6 +209,12 @@ function App() {
 
       newSocket.on('connect', () => {
         console.log('Connected to WebSocket');
+        // Аутентификация для получения персональных уведомлений
+        newSocket.emit('authenticate', { user_id: user.id });
+      });
+
+      newSocket.on('authenticated', (data) => {
+        console.log('WebSocket authenticated:', data);
       });
 
       newSocket.on('venue_update', (data) => {
@@ -196,6 +223,20 @@ function App() {
         if (selectedVenue && data.venue_id === selectedVenue.id) {
           loadVenueSessions(selectedVenue.id);
         }
+      });
+
+      // Персональные уведомления (фильтрация на бэкенде)
+      newSocket.on('notification', (data) => {
+        console.log('Received notification:', data);
+
+        const newNotification = {
+          ...data,
+          id: data.id || Date.now(),
+          read: false,
+        };
+
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
       });
 
       return () => {
@@ -436,10 +477,11 @@ function App() {
     console.log('🔐 handleLoginSuccess: вход успешен, загружаем события');
     handleLogin(userData, newAccessToken, newRefreshToken);
     setShowLoginModal(false);
-    // Явно загружаем события после входа
+    // Явно загружаем события и уведомления после входа
     setTimeout(() => {
-      console.log('📍 После входа: загружаем события');
+      console.log('📍 После входа: загружаем события и уведомления');
       loadMapEvents();
+      loadNotifications();
     }, 100);
   };
 
@@ -450,8 +492,15 @@ function App() {
         <div className="header-actions">
           {user ? (
             <>
-              <button className="header-icon-btn" title="Уведомления">
+              <button
+                className={`header-icon-btn ${unreadCount > 0 ? 'has-badge' : ''}`}
+                title="Уведомления"
+                onClick={() => setShowNotifications(true)}
+              >
                 <span className="material-symbols-outlined">notifications</span>
+                {unreadCount > 0 && (
+                  <span className="header-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
               </button>
               <button className="header-icon-btn" title="Настройки" onClick={() => setShowSettings(true)}>
                 <span className="material-symbols-outlined">settings</span>
@@ -641,6 +690,37 @@ function App() {
             <LoginForm onLogin={handleLoginSuccess} apiUrl={API_URL} />
           </div>
         </div>
+      )}
+
+      {showNotifications && (
+        <NotificationsModal
+          notifications={notifications}
+          onClose={() => setShowNotifications(false)}
+          onClear={async () => {
+            // Удаляем все уведомления из БД
+            try {
+              await axios.delete(`${API_URL}/auth/notifications`);
+            } catch (e) {
+              console.error('Error deleting notifications:', e);
+            }
+            setNotifications([]);
+            setUnreadCount(0);
+          }}
+          onNotificationClick={async (notification) => {
+            // Помечаем как прочитанное если ещё не прочитано
+            if (!notification.read) {
+              try {
+                await axios.post(`${API_URL}/auth/notifications/read`, { ids: [notification.id] });
+                setNotifications(prev => prev.map(n =>
+                  n.id === notification.id ? { ...n, read: true } : n
+                ));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+              } catch (e) {
+                console.error('Error marking notification read:', e);
+              }
+            }
+          }}
+        />
       )}
     </div>
   );

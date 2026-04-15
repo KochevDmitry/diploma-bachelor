@@ -4,12 +4,15 @@ Auth Service - управление пользователями и аутент
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from geoalchemy2 import Geometry
+from geoalchemy2.functions import ST_AsGeoJSON, ST_SetSRID, ST_MakePoint
 from werkzeug.utils import secure_filename
 import jwt
 import bcrypt
 from datetime import datetime, timedelta
 import os
 import uuid
+import json
 
 # Папка для хранения аватаров
 UPLOAD_FOLDER = '/app/uploads/avatars'
@@ -49,16 +52,34 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     bio = db.Column(db.Text, nullable=True, default='')
     avatar_url = db.Column(db.String(500), nullable=True, default=None)
+    notification_location = db.Column(Geometry('POINT', srid=4326), nullable=True)
+    notify_own_games = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
+        # Парсинг notification_location
+        notification_coords = None
+        if self.notification_location is not None:
+            try:
+                location_json = db.session.scalar(ST_AsGeoJSON(self.notification_location))
+                if location_json:
+                    location_data = json.loads(location_json)
+                    notification_coords = {
+                        'lat': location_data['coordinates'][1],
+                        'lon': location_data['coordinates'][0]
+                    }
+            except Exception as e:
+                print(f"Error parsing notification_location: {e}")
+
         return {
             'id': self.id,
             'username': self.username,
             'email': self.email,
             'bio': self.bio or '',
             'avatar_url': self.avatar_url,
+            'notification_location': notification_coords,
+            'notify_own_games': self.notify_own_games,
             'created_at': self.created_at.isoformat()
         }
 
@@ -416,6 +437,267 @@ def change_password():
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/notification-location', methods=['POST', 'PUT'])
+def update_notification_location():
+    """Обновление локации для уведомлений о событиях поблизости"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user = User.query.get(payload['user_id'])
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        lat = data.get('lat') or data.get('latitude')
+        lon = data.get('lon') or data.get('longitude')
+
+        if lat is None or lon is None:
+            return jsonify({'error': 'Missing lat/lon coordinates'}), 400
+
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid coordinates format'}), 400
+
+        # Обновляем локацию с использованием PostGIS
+        user.notification_location = db.func.ST_SetSRID(
+            db.func.ST_MakePoint(lon, lat),
+            4326
+        )
+
+        try:
+            db.session.commit()
+            return jsonify({
+                'message': 'Notification location updated',
+                'notification_location': {'lat': lat, 'lon': lon},
+                'user': user.to_dict()
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/notification-location', methods=['DELETE'])
+def delete_notification_location():
+    """Удаление локации уведомлений (отключение уведомлений о событиях поблизости)"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user = User.query.get(payload['user_id'])
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user.notification_location = None
+
+        try:
+            db.session.commit()
+            return jsonify({
+                'message': 'Notification location removed',
+                'user': user.to_dict()
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/notify-own-games', methods=['PUT'])
+def update_notify_own_games():
+    """Включение/отключение уведомлений о своих играх"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user = User.query.get(payload['user_id'])
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        data = request.get_json()
+        if data is None or 'enabled' not in data:
+            return jsonify({'error': 'enabled field required'}), 400
+
+        user.notify_own_games = bool(data['enabled'])
+
+        try:
+            db.session.commit()
+            return jsonify({
+                'message': 'Setting updated',
+                'user': user.to_dict()
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/notifications', methods=['GET'])
+def get_notifications():
+    """Получение уведомлений пользователя"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user_id = payload['user_id']
+
+        # Получаем уведомления из БД
+        result = db.session.execute(
+            db.text("""
+                SELECT id, type, title, message, session_id, read, created_at
+                FROM notifications
+                WHERE user_id = :user_id
+                ORDER BY created_at DESC
+                LIMIT 50
+            """),
+            {'user_id': user_id}
+        )
+
+        notifications = []
+        for row in result:
+            notifications.append({
+                'id': row[0],
+                'type': row[1],
+                'title': row[2],
+                'message': row[3],
+                'session_id': row[4],
+                'read': row[5],
+                'timestamp': row[6].isoformat() if row[6] else None
+            })
+
+        return jsonify(notifications), 200
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/notifications/read', methods=['POST'])
+def mark_notifications_read():
+    """Пометить уведомления как прочитанные"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user_id = payload['user_id']
+        data = request.get_json() or {}
+        notification_ids = data.get('ids')  # Список ID или None для всех
+
+        if notification_ids:
+            # Помечаем конкретные уведомления
+            db.session.execute(
+                db.text("""
+                    UPDATE notifications SET read = TRUE
+                    WHERE user_id = :user_id AND id = ANY(:ids)
+                """),
+                {'user_id': user_id, 'ids': notification_ids}
+            )
+        else:
+            # Помечаем все как прочитанные
+            db.session.execute(
+                db.text("""
+                    UPDATE notifications SET read = TRUE
+                    WHERE user_id = :user_id AND read = FALSE
+                """),
+                {'user_id': user_id}
+            )
+
+        db.session.commit()
+        return jsonify({'message': 'Notifications marked as read'}), 200
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+
+@app.route('/auth/notifications', methods=['DELETE'])
+def delete_notifications():
+    """Удалить все уведомления пользователя"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+    if not token:
+        return jsonify({'error': 'Token missing'}), 401
+
+    try:
+        payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+
+        if payload.get('type') == 'refresh':
+            return jsonify({'error': 'Use access token, not refresh token'}), 401
+
+        user_id = payload['user_id']
+
+        db.session.execute(
+            db.text("DELETE FROM notifications WHERE user_id = :user_id"),
+            {'user_id': user_id}
+        )
+        db.session.commit()
+
+        return jsonify({'message': 'Notifications deleted'}), 200
 
     except jwt.ExpiredSignatureError:
         return jsonify({'error': 'Token expired'}), 401
