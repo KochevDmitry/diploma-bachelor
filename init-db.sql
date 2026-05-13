@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     bio TEXT DEFAULT '',
+    avatar_url VARCHAR(500) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,6 +20,33 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'bio') THEN
         ALTER TABLE users ADD COLUMN bio TEXT DEFAULT '';
+    END IF;
+END $$;
+
+-- Добавление колонки avatar_url если её нет (для миграции существующей БД)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'avatar_url') THEN
+        ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) DEFAULT NULL;
+    END IF;
+END $$;
+
+-- Добавление колонки notification_location для уведомлений о событиях поблизости
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'notification_location') THEN
+        ALTER TABLE users ADD COLUMN notification_location geometry(Point, 4326) DEFAULT NULL;
+    END IF;
+END $$;
+
+-- Индекс для быстрого поиска пользователей по локации
+CREATE INDEX IF NOT EXISTS users_notification_location_idx ON users USING GIST(notification_location);
+
+-- Добавление колонки notify_own_games для настройки уведомлений о своих играх
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'notify_own_games') THEN
+        ALTER TABLE users ADD COLUMN notify_own_games BOOLEAN DEFAULT TRUE NOT NULL;
     END IF;
 END $$;
 
@@ -47,10 +75,14 @@ CREATE TABLE IF NOT EXISTS game_sessions (
     status VARCHAR(20) DEFAULT 'waiting', -- waiting, full, started, finished
     latitude FLOAT,
     longitude FLOAT,
+    location geometry(Point, 4326), -- PostGIS для быстрого поиска поблизости
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP,
     finished_at TIMESTAMP
 );
+
+-- Индекс для быстрого поиска сессий по геолокации
+CREATE INDEX IF NOT EXISTS game_sessions_location_idx ON game_sessions USING GIST(location);
 
 -- Таблица участников игровых сессий
 CREATE TABLE IF NOT EXISTS session_participants (

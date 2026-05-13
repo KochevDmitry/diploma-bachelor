@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import './UserSidebar.css';
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const UserSidebar = ({ user, onLogout, onClose, onMyEventsClick, onHistoryClick }) => {
   const [isClosing, setIsClosing] = useState(false);
 
@@ -16,7 +18,15 @@ const UserSidebar = ({ user, onLogout, onClose, onMyEventsClick, onHistoryClick 
         {/* User Profile Header */}
         <div className="user-sidebar-profile">
           <div className="user-avatar">
-            <span className="material-symbols-outlined">person</span>
+            {user.avatar_url ? (
+              <img
+                src={`${API_URL}${user.avatar_url}`}
+                alt={user.username}
+                className="user-avatar-img"
+              />
+            ) : (
+              <span className="material-symbols-outlined">person</span>
+            )}
           </div>
           <div className="user-profile-info">
             <h2 className="user-name">{user.username}</h2>

@@ -4,7 +4,10 @@ Game Session Service - управление игровыми сессиями
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from geoalchemy2 import Geography
+from geoalchemy2.functions import ST_AsGeoJSON, ST_DWithin, ST_SetSRID, ST_MakePoint
 from celery import Celery
+from sqlalchemy import text
 import redis
 import os
 import json
@@ -65,7 +68,7 @@ except ImportError:
 # Модели
 class GameSession(db.Model):
     __tablename__ = 'game_sessions'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     venue_id = db.Column(db.Integer, nullable=True)  # Ссылка на Venue ID из map_service
     creator_id = db.Column(db.Integer, nullable=False)  # Ссылка на User ID из auth_service
@@ -75,14 +78,15 @@ class GameSession(db.Model):
     status = db.Column(db.String(20), default='waiting')  # waiting, full, started, finished
     latitude = db.Column(db.Float, nullable=True)  # Координаты для произвольных событий
     longitude = db.Column(db.Float, nullable=True)
+    location = db.Column(Geography('POINT', srid=4326), nullable=True)  # PostGIS для поиска поблизости
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     started_at = db.Column(db.DateTime)
     finished_at = db.Column(db.DateTime)
-    
+
     def to_dict(self):
         # Получение участников из Redis
         participants = get_session_participants(self.id)
-        
+
         return {
             'id': self.id,
             'venue_id': self.venue_id,
@@ -192,14 +196,17 @@ def get_session(session_id):
 def create_session():
     """Создание новой игровой сессии"""
     data = request.get_json()
-    
+
     if not data or not data.get('creator_id'):
         return jsonify({'error': 'Missing required field: creator_id'}), 400
-    
+
     # Проверяем, что либо venue_id, либо координаты указаны
     if not data.get('venue_id') and (not data.get('latitude') or not data.get('longitude')):
         return jsonify({'error': 'Either venue_id or latitude/longitude coordinates are required'}), 400
-    
+
+    lat = data.get('latitude')
+    lon = data.get('longitude')
+
     session = GameSession(
         venue_id=data.get('venue_id'),
         creator_id=data['creator_id'],
@@ -207,27 +214,33 @@ def create_session():
         max_players=data.get('max_players', 10),
         current_players=1,
         status='waiting',
-        latitude=data.get('latitude'),
-        longitude=data.get('longitude')
+        latitude=lat,
+        longitude=lon
     )
-    
+
+    # Устанавливаем PostGIS location если есть координаты
+    if lat is not None and lon is not None:
+        session.location = db.func.ST_SetSRID(db.func.ST_MakePoint(lon, lat), 4326)
+
     try:
         db.session.add(session)
         db.session.commit()
-        
+
         # Сохранение создателя в Redis
         set_session_participants(session.id, [data['creator_id']])
-        
+
         # Очистка кеша
         if data.get('venue_id'):
             redis_client.delete(f'venue:{data["venue_id"]}:sessions')
-        
-        # Отправка уведомления через Celery
-        notify_new_session.delay(session.id, data.get('venue_id'))
-        
+
+        # Отправка уведомления о новой сессии поблизости через Celery
+        if lat is not None and lon is not None:
+            notify_new_session.delay(session.id, lat, lon, data.get('sport_type', 'football'))
+
         return jsonify(session.to_dict()), 201
     except Exception as e:
         db.session.rollback()
+        logger.exception(f"Error creating session: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -284,14 +297,14 @@ def join_session(session_id):
         participants.append(user_id)
         set_session_participants(session_id, participants)
         logger.debug(f"Redis updated with participants: {participants}")
-        
+
         # Очистка кеша
         if session.venue_id:
             redis_client.delete(f'venue:{session.venue_id}:sessions')
-        
-        # Уведомление о присоединении
-        notify_session_update.delay(session_id)
-        
+
+        # Уведомление создателю о присоединении участника
+        notify_participant_joined.delay(session_id, session.creator_id, user_id, session.sport_type)
+
         return jsonify(session.to_dict()), 200
     except Exception as e:
         db.session.rollback()
@@ -332,10 +345,14 @@ def leave_session(session_id):
         if user_id in participants:
             participants.remove(user_id)
         set_session_participants(session_id, participants)
-        
+
         # Очистка кеша
-        redis_client.delete(f'venue:{session.venue_id}:sessions')
-        
+        if session.venue_id:
+            redis_client.delete(f'venue:{session.venue_id}:sessions')
+
+        # Уведомление создателю об уходе участника
+        notify_participant_left.delay(session_id, session.creator_id, user_id, session.sport_type)
+
         return jsonify(session.to_dict()), 200
     except Exception as e:
         db.session.rollback()
@@ -471,19 +488,181 @@ def delete_session(session_id):
         return jsonify({'error': str(e)}), 500
 
 
+# Название типов спорта на русском
+SPORT_NAMES = {
+    'football': 'футбол',
+    'basketball': 'баскетбол',
+    'volleyball': 'волейбол',
+    'tennis': 'теннис',
+    'running': 'бег',
+    'other': 'спорт'
+}
+
+
+def get_sport_name(sport_type):
+    """Получить название спорта на русском"""
+    return SPORT_NAMES.get(sport_type, sport_type)
+
+
+def save_notification_to_db(user_id, notif_type, title, message, session_id=None):
+    """Сохранить уведомление в БД"""
+    try:
+        query = text("""
+            INSERT INTO notifications (user_id, type, title, message, session_id)
+            VALUES (:user_id, :type, :title, :message, :session_id)
+            RETURNING id
+        """)
+        result = db.session.execute(query, {
+            'user_id': user_id,
+            'type': notif_type,
+            'title': title,
+            'message': message,
+            'session_id': session_id
+        })
+        db.session.commit()
+        return result.fetchone()[0]
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Error saving notification to DB: {e}")
+        return None
+
+
 # Celery задачи
 @celery.task(name='app.notify_new_session')
-def notify_new_session(session_id, venue_id):
-    """Уведомление о новой сессии"""
-    # Здесь можно отправить уведомление через Notification Service
-    pass
+def notify_new_session(session_id, lat, lon, sport_type):
+    """Уведомление пользователям поблизости о новой сессии (в радиусе 2 км)"""
+    from app import app as flask_app
+    with flask_app.app_context():
+        try:
+            # Найти пользователей с notification_location в радиусе 2 км
+            # ST_DWithin работает в метрах для geography типа
+            query = text("""
+                SELECT id, username FROM users
+                WHERE notification_location IS NOT NULL
+                AND ST_DWithin(
+                    notification_location::geography,
+                    ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                    2000
+                )
+            """)
+            result = db.session.execute(query, {'lon': lon, 'lat': lat})
+            nearby_users = result.fetchall()
+
+            sport_name = get_sport_name(sport_type)
+            logger.info(f"Found {len(nearby_users)} users nearby for session {session_id}")
+
+            for user in nearby_users:
+                user_id = user[0]
+                title = 'Новое событие рядом'
+                message = f'Рядом с вами создано событие: {sport_name}'
+
+                # Сохраняем в БД
+                notif_id = save_notification_to_db(user_id, 'nearby_game', title, message, session_id)
+
+                # Отправляем через WebSocket
+                notification = {
+                    'id': notif_id,
+                    'type': 'nearby_game',
+                    'user_id': user_id,
+                    'session_id': session_id,
+                    'sport_type': sport_type,
+                    'title': title,
+                    'message': message,
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+                redis_client.publish('user_notifications', json.dumps(notification))
+                logger.debug(f"Sent nearby_game notification to user {user_id}")
+
+        except Exception as e:
+            logger.exception(f"Error in notify_new_session: {e}")
+
+
+@celery.task(name='app.notify_participant_joined')
+def notify_participant_joined(session_id, creator_id, user_id, sport_type):
+    """Уведомление создателю о присоединении участника"""
+    from app import app as flask_app
+    with flask_app.app_context():
+        try:
+            # Проверяем настройку notify_own_games у создателя
+            check_query = text("SELECT notify_own_games FROM users WHERE id = :user_id")
+            result = db.session.execute(check_query, {'user_id': creator_id}).fetchone()
+            if not result or not result[0]:
+                logger.info(f"Creator {creator_id} has notify_own_games disabled, skipping")
+                return
+
+            sport_name = get_sport_name(sport_type)
+            title = 'Новый участник'
+            message = f'К вашему событию ({sport_name}) присоединился участник'
+
+            # Сохраняем в БД
+            notif_id = save_notification_to_db(creator_id, 'participant_joined', title, message, session_id)
+
+            # Отправляем через WebSocket
+            notification = {
+                'id': notif_id,
+                'type': 'participant_joined',
+                'user_id': creator_id,
+                'session_id': session_id,
+                'participant_id': user_id,
+                'title': title,
+                'message': message,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            redis_client.publish('user_notifications', json.dumps(notification))
+            logger.info(f"Sent participant_joined notification to creator {creator_id}")
+        except Exception as e:
+            logger.exception(f"Error in notify_participant_joined: {e}")
+
+
+@celery.task(name='app.notify_participant_left')
+def notify_participant_left(session_id, creator_id, user_id, sport_type):
+    """Уведомление создателю об уходе участника"""
+    from app import app as flask_app
+    with flask_app.app_context():
+        try:
+            # Проверяем настройку notify_own_games у создателя
+            check_query = text("SELECT notify_own_games FROM users WHERE id = :user_id")
+            result = db.session.execute(check_query, {'user_id': creator_id}).fetchone()
+            if not result or not result[0]:
+                logger.info(f"Creator {creator_id} has notify_own_games disabled, skipping")
+                return
+
+            sport_name = get_sport_name(sport_type)
+            title = 'Участник ушёл'
+            message = f'Участник покинул ваше событие ({sport_name})'
+
+            # Сохраняем в БД
+            notif_id = save_notification_to_db(creator_id, 'participant_left', title, message, session_id)
+
+            # Отправляем через WebSocket
+            notification = {
+                'id': notif_id,
+                'type': 'participant_left',
+                'user_id': creator_id,
+                'session_id': session_id,
+                'participant_id': user_id,
+                'title': title,
+                'message': message,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            redis_client.publish('user_notifications', json.dumps(notification))
+            logger.info(f"Sent participant_left notification to creator {creator_id}")
+        except Exception as e:
+            logger.exception(f"Error in notify_participant_left: {e}")
 
 
 @celery.task(name='app.notify_session_update')
 def notify_session_update(session_id):
-    """Уведомление об обновлении сессии"""
-    # Здесь можно отправить уведомление через Notification Service
-    pass
+    """Уведомление об обновлении сессии (общее)"""
+    try:
+        notification = {
+            'type': 'session_update',
+            'session_id': session_id,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        redis_client.publish('session_updates', json.dumps(notification))
+    except Exception as e:
+        logger.exception(f"Error in notify_session_update: {e}")
 
 
 @celery.task(name='app.cleanup_old_sessions')
@@ -496,12 +675,13 @@ def cleanup_old_sessions():
             GameSession.status == 'finished',
             GameSession.finished_at < cutoff_time
         ).all()
-        
+
         for session in old_sessions:
             redis_client.delete(f'session:{session.id}:participants')
             db.session.delete(session)
-        
+
         db.session.commit()
+        logger.info(f"Cleaned up {len(old_sessions)} old sessions")
 
 
 if __name__ == '__main__':

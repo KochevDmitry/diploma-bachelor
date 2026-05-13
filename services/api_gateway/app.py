@@ -1,7 +1,7 @@
 """
 API Gateway - единая точка входа для всех запросов
 """
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import requests
 import jwt
@@ -28,7 +28,7 @@ GAME_SERVICE_URL = os.getenv('GAME_SERVICE_URL', 'http://game_session_service:50
 NOTIFICATION_SERVICE_URL = os.getenv('NOTIFICATION_SERVICE_URL', 'http://notification_service:5004')
 
 # Маршруты, не требующие аутентификации
-PUBLIC_ROUTES = ['/auth/register', '/auth/login', '/api/auth/register', '/api/auth/login', '/health', '/api/map/venues', '/api/games/venue/', '/api/games/map']
+PUBLIC_ROUTES = ['/auth/register', '/auth/login', '/api/auth/register', '/api/auth/login', '/health', '/api/map/venues', '/api/games/venue/', '/api/games/map', '/auth/avatars/', '/api/auth/avatars/', '/api/notifications/health']
 
 
 def verify_token(f):
@@ -86,6 +86,42 @@ def check_token():
         return jsonify({'error': 'Invalid token'}), 401
 
 
+def proxy_file_upload(service_url, path):
+    """Проксирование multipart/form-data запроса (загрузка файлов)"""
+    url = f"{service_url}{path}"
+    request_headers = {k: v for k, v in request.headers if k.lower() not in ['host', 'content-type', 'content-length']}
+
+    try:
+        response = requests.post(
+            url,
+            files={key: (f.filename, f.stream, f.content_type) for key, f in request.files.items()},
+            data=request.form,
+            headers=request_headers,
+            timeout=30
+        )
+        try:
+            return response.json(), response.status_code
+        except ValueError:
+            return jsonify({'error': 'Invalid response from service'}), 502
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Service unavailable: {str(e)}'}), 503
+
+
+def proxy_file_download(service_url, path):
+    """Проксирование запроса на скачивание файла (бинарные данные)"""
+    url = f"{service_url}{path}"
+
+    try:
+        response = requests.get(url, stream=True, timeout=30)
+        return Response(
+            response.iter_content(chunk_size=8192),
+            status=response.status_code,
+            content_type=response.headers.get('Content-Type', 'application/octet-stream')
+        )
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Service unavailable: {str(e)}'}), 503
+
+
 def proxy_request(service_url, path, method='GET', data=None, headers=None):
     """Проксирование запроса к микросервису"""
     url = f"{service_url}{path}"
@@ -129,14 +165,28 @@ def health():
 @app.route('/auth/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def auth_proxy(path):
     """Проксирование запросов к Auth Service"""
-    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, request.get_json())
+    # Специальная обработка для загрузки аватара (multipart/form-data)
+    if path == 'avatar' and request.method == 'POST':
+        return proxy_file_upload(AUTH_SERVICE_URL, '/auth/avatar')
+    # Специальная обработка для отдачи аватаров (бинарные данные)
+    if path.startswith('avatars/'):
+        return proxy_file_download(AUTH_SERVICE_URL, f'/auth/{path}')
+    data = request.get_json(silent=True) if request.method in ['POST', 'PUT'] else None
+    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, data)
 
 
 # API Auth Service routes (with /api prefix)
 @app.route('/api/auth/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def api_auth_proxy(path):
     """Проксирование запросов к Auth Service (с /api префиксом)"""
-    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, request.get_json())
+    # Специальная обработка для загрузки аватара (multipart/form-data)
+    if path == 'avatar' and request.method == 'POST':
+        return proxy_file_upload(AUTH_SERVICE_URL, '/auth/avatar')
+    # Специальная обработка для отдачи аватаров (бинарные данные)
+    if path.startswith('avatars/'):
+        return proxy_file_download(AUTH_SERVICE_URL, f'/auth/{path}')
+    data = request.get_json(silent=True) if request.method in ['POST', 'PUT'] else None
+    return proxy_request(AUTH_SERVICE_URL, f'/auth/{path}', request.method, data)
 
 
 
