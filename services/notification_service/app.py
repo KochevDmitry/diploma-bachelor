@@ -1,6 +1,18 @@
 """
 Notification Service - WebSocket для real-time обновлений + REST для истории уведомлений
 """
+# Monkey-patch ДОЛЖЕН быть до любых других импортов, иначе threading/socket
+# подменятся уже после того, как Flask/Redis-клиенты захватят оригиналы,
+# и фоновый Pub/Sub-слушатель будет запущен реальным OS-потоком — он же
+# заблокирует heartbeat у Flask-SocketIO и потеряет socketio.emit из room.
+# DNS НЕ патчим: greendns у eventlet 0.33 несовместим с современным dnspython
+# (LifetimeTimeout / unexpected kwarg 'ignore_errors'), а штатный getaddrinfo
+# вызывается только при установке соединений и для нас не критичен по перформансу.
+import os as _os
+_os.environ.setdefault('EVENTLET_NO_GREENDNS', 'yes')
+import eventlet
+eventlet.monkey_patch(socket=True, select=True, thread=True, time=True, os=True)
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -245,10 +257,11 @@ def listen_for_notifications():
                 logger.exception(f'Error processing notification: {e}')
 
 
-# Запуск прослушивания в фоновом потоке
-import threading
-notification_thread = threading.Thread(target=listen_for_notifications, daemon=True)
-notification_thread.start()
+# Запуск прослушивания Redis Pub/Sub как greenlet'а, управляемого тем же
+# eventlet-хабом, что и WebSocket-соединения. Это даёт двум вещам общую
+# очередь событий: и доставка через socketio.emit, и heartbeat сокетов
+# теперь шедулятся одинаково кооперативно.
+socketio.start_background_task(listen_for_notifications)
 
 
 if __name__ == '__main__':

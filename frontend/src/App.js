@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import MapComponent from './components/MapComponent';
@@ -201,6 +201,13 @@ function App() {
     initializeSession();
   }, []);
 
+  // Свежий selectedVenue для использования внутри WS-обработчиков
+  // без пересоздания самого сокета на каждый клик по площадке.
+  const selectedVenueRef = useRef(selectedVenue);
+  useEffect(() => {
+    selectedVenueRef.current = selectedVenue;
+  }, [selectedVenue]);
+
   // Подключение к WebSocket
   useEffect(() => {
     if (user) {
@@ -213,15 +220,23 @@ function App() {
         newSocket.emit('authenticate', { user_id: user.id });
       });
 
+      newSocket.on('connect_error', (err) => {
+        console.error('WS connect_error:', err.message);
+      });
+
+      newSocket.on('disconnect', (reason) => {
+        console.warn('WS disconnect:', reason);
+      });
+
       newSocket.on('authenticated', (data) => {
         console.log('WebSocket authenticated:', data);
       });
 
       newSocket.on('venue_update', (data) => {
         console.log('Venue update:', data);
-        // Обновление данных о площадке
-        if (selectedVenue && data.venue_id === selectedVenue.id) {
-          loadVenueSessions(selectedVenue.id);
+        const venue = selectedVenueRef.current;
+        if (venue && data.venue_id === venue.id) {
+          loadVenueSessions(venue.id);
         }
       });
 
@@ -243,7 +258,7 @@ function App() {
         newSocket.close();
       };
     }
-  }, [user, selectedVenue]);
+  }, [user]);
 
   // Загрузка площадок при монтировании
   useEffect(() => {
