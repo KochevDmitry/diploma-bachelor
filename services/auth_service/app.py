@@ -4,7 +4,7 @@ Auth Service - управление пользователями и аутент
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from geoalchemy2 import Geometry
+from geoalchemy2 import Geography
 from geoalchemy2.functions import ST_AsGeoJSON, ST_SetSRID, ST_MakePoint
 from werkzeug.utils import secure_filename
 import jwt
@@ -52,7 +52,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     bio = db.Column(db.Text, nullable=True, default='')
     avatar_url = db.Column(db.String(500), nullable=True, default=None)
-    notification_location = db.Column(Geometry('POINT', srid=4326), nullable=True)
+    notification_location = db.Column(Geography('POINT', srid=4326), nullable=True)
     notify_own_games = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

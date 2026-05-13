@@ -115,10 +115,34 @@ class SessionParticipant(db.Model):
 
 
 def get_session_participants(session_id):
-    """Получение участников сессии из Redis"""
+    """Получение участников сессии из Redis с fallback в PostgreSQL.
+
+    Если ключ в Redis отсутствует (протух TTL или ещё не был прогрет),
+    собираем список из БД: creator_id из game_sessions плюс user_id
+    из session_participants — и прогреваем Redis обратно.
+    """
     key = f'session:{session_id}:participants'
-    participants = redis_client.smembers(key)
-    return [int(p.decode()) for p in participants] if participants else []
+    cached = redis_client.smembers(key)
+    if cached:
+        return [int(p.decode()) for p in cached]
+
+    # Cache miss — восстанавливаем из PG
+    session = GameSession.query.get(session_id)
+    if not session:
+        return []
+
+    joiner_ids = [
+        row.user_id
+        for row in SessionParticipant.query.filter_by(session_id=session_id).all()
+    ]
+    # Создатель хранится только в game_sessions.creator_id, в session_participants
+    # его нет — поэтому добавляем явно и дедуплицируем на всякий случай.
+    participants = [session.creator_id] + [uid for uid in joiner_ids if uid != session.creator_id]
+
+    if participants:
+        set_session_participants(session_id, participants)
+
+    return participants
 
 
 def set_session_participants(session_id, user_ids):
@@ -540,7 +564,7 @@ def notify_new_session(session_id, lat, lon, sport_type):
                 SELECT id, username FROM users
                 WHERE notification_location IS NOT NULL
                 AND ST_DWithin(
-                    notification_location::geography,
+                    notification_location,
                     ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
                     2000
                 )

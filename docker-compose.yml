@@ -3,7 +3,8 @@ version: '3.8'
 services:
   # PostgreSQL с PostGIS расширением для геоданных
   postgres:
-    image: postgis/postgis:15-3.3
+    image: postgis/postgis:15-3.5
+    platform: linux/amd64
     container_name: sportapp_postgres
     environment:
       POSTGRES_USER: sportapp_user
