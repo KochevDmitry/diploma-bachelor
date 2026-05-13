@@ -14,8 +14,9 @@ import os
 import uuid
 import json
 
-# Папка для хранения аватаров
-UPLOAD_FOLDER = '/app/uploads/avatars'
+# Папка для хранения аватаров; в Docker монтируется на /app/uploads/avatars,
+# в тестах и локальной разработке можно переопределить через env.
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/app/uploads/avatars')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
