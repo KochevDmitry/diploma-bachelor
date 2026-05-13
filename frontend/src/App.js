@@ -55,7 +55,7 @@ function App() {
   // Загрузка уведомлений из БД
   const loadNotifications = async () => {
     try {
-      const response = await axios.get(`${API_URL}/auth/notifications`);
+      const response = await axios.get(`${API_URL}/api/notifications`);
       const notifs = response.data.map(n => ({
         ...n,
         read: n.read || false
@@ -699,7 +699,7 @@ function App() {
           onClear={async () => {
             // Удаляем все уведомления из БД
             try {
-              await axios.delete(`${API_URL}/auth/notifications`);
+              await axios.delete(`${API_URL}/api/notifications`);
             } catch (e) {
               console.error('Error deleting notifications:', e);
             }
@@ -710,7 +710,7 @@ function App() {
             // Помечаем как прочитанное если ещё не прочитано
             if (!notification.read) {
               try {
-                await axios.post(`${API_URL}/auth/notifications/read`, { ids: [notification.id] });
+                await axios.post(`${API_URL}/api/notifications/read`, { ids: [notification.id] });
                 setNotifications(prev => prev.map(n =>
                   n.id === notification.id ? { ...n, read: true } : n
                 ));

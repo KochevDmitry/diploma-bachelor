@@ -1,9 +1,10 @@
 """
-Notification Service - WebSocket для real-time обновлений
+Notification Service - WebSocket для real-time обновлений + REST для истории уведомлений
 """
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_sqlalchemy import SQLAlchemy
 import redis
 import os
 import json
@@ -17,6 +18,14 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
+# Подключение к PostgreSQL для работы с историей уведомлений
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL',
+    'postgresql://sportapp_user:sportapp_password@postgres:5432/sportapp_db'
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
 # Redis для pub/sub
 redis_client = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/1'))
 pubsub = redis_client.pubsub()
@@ -25,10 +34,101 @@ pubsub = redis_client.pubsub()
 socket_to_user = {}
 
 
+def _user_id_from_request():
+    """Читает user_id из заголовка X-User-Id, инжектированного API Gateway после
+    проверки JWT. Сервис не дублирует проверку токена — авторизация централизована.
+    """
+    raw = request.headers.get('X-User-Id')
+    if not raw:
+        return None, (jsonify({'error': 'Missing X-User-Id (request must come through API Gateway)'}), 401)
+    try:
+        return int(raw), None
+    except ValueError:
+        return None, (jsonify({'error': 'Invalid X-User-Id'}), 400)
+
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
     return {'status': 'ok', 'service': 'notification_service'}, 200
+
+
+@app.route('/api/notifications', methods=['GET'])
+def get_notifications():
+    """Получение списка уведомлений текущего пользователя"""
+    user_id, err = _user_id_from_request()
+    if err:
+        return err
+
+    result = db.session.execute(
+        db.text("""
+            SELECT id, type, title, message, session_id, read, created_at
+            FROM notifications
+            WHERE user_id = :user_id
+            ORDER BY created_at DESC
+            LIMIT 50
+        """),
+        {'user_id': user_id}
+    )
+
+    notifications = [
+        {
+            'id': row[0],
+            'type': row[1],
+            'title': row[2],
+            'message': row[3],
+            'session_id': row[4],
+            'read': row[5],
+            'timestamp': row[6].isoformat() if row[6] else None,
+        }
+        for row in result
+    ]
+    return jsonify(notifications), 200
+
+
+@app.route('/api/notifications/read', methods=['POST'])
+def mark_notifications_read():
+    """Пометить уведомления как прочитанные (конкретные id или все непрочитанные)"""
+    user_id, err = _user_id_from_request()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    notification_ids = data.get('ids')
+
+    if notification_ids:
+        db.session.execute(
+            db.text("""
+                UPDATE notifications SET read = TRUE
+                WHERE user_id = :user_id AND id = ANY(:ids)
+            """),
+            {'user_id': user_id, 'ids': notification_ids}
+        )
+    else:
+        db.session.execute(
+            db.text("""
+                UPDATE notifications SET read = TRUE
+                WHERE user_id = :user_id AND read = FALSE
+            """),
+            {'user_id': user_id}
+        )
+    db.session.commit()
+    return jsonify({'message': 'Notifications marked as read'}), 200
+
+
+@app.route('/api/notifications', methods=['DELETE'])
+def delete_notifications():
+    """Удалить все уведомления текущего пользователя"""
+    user_id, err = _user_id_from_request()
+    if err:
+        return err
+
+    db.session.execute(
+        db.text("DELETE FROM notifications WHERE user_id = :user_id"),
+        {'user_id': user_id}
+    )
+    db.session.commit()
+    return jsonify({'message': 'Notifications deleted'}), 200
 
 
 @socketio.on('connect')

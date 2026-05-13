@@ -251,11 +251,25 @@ def game_proxy(path):
 
 
 # Notification Service routes (WebSocket будет обрабатываться отдельно)
-@app.route('/api/notifications/<path:path>', methods=['GET', 'POST'])
+@app.route('/api/notifications', methods=['GET', 'POST', 'DELETE'])
+@app.route('/api/notifications/<path:path>', methods=['GET', 'POST', 'DELETE'])
 @verify_token
-def notification_proxy(path):
-    """Проксирование запросов к Notification Service"""
-    return proxy_request(NOTIFICATION_SERVICE_URL, f'/api/notifications/{path}', request.method, request.get_json())
+def notification_proxy(path=''):
+    """Проксирование запросов к Notification Service.
+
+    Авторизация выполняется здесь (verify_token), user_id прокидывается
+    downstream-сервису через заголовок X-User-Id, чтобы он не дублировал
+    расшифровку JWT.
+    """
+    downstream_path = f'/api/notifications/{path}' if path else '/api/notifications'
+    extra_headers = {'X-User-Id': str(request.current_user['user_id'])}
+    return proxy_request(
+        NOTIFICATION_SERVICE_URL,
+        downstream_path,
+        request.method,
+        request.get_json(silent=True),
+        headers=extra_headers,
+    )
 
 
 if __name__ == '__main__':

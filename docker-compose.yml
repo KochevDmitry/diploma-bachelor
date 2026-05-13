@@ -123,7 +123,7 @@ services:
       - sportapp_network
     restart: unless-stopped
 
-  # Notification Service (WebSocket)
+  # Notification Service (WebSocket + REST для истории уведомлений)
   notification_service:
     build:
       context: ./services/notification_service
@@ -131,11 +131,14 @@ services:
     container_name: sportapp_notification
     environment:
       FLASK_ENV: production
+      DATABASE_URL: postgresql://sportapp_user:sportapp_password@postgres:5432/sportapp_db
       REDIS_URL: redis://redis:6379/1
       SERVICE_PORT: 5004
     ports:
       - "5004:5004"
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
