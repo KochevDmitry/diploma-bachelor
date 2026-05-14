@@ -257,9 +257,14 @@ def create_session():
         if data.get('venue_id'):
             redis_client.delete(f'venue:{data["venue_id"]}:sessions')
 
-        # Отправка уведомления о новой сессии поблизости через Celery
+        # Отправка уведомления о новой сессии поблизости через Celery.
+        # Передаём creator_id, чтобы исключить самого создателя из рассылки.
         if lat is not None and lon is not None:
-            notify_new_session.delay(session.id, lat, lon, data.get('sport_type', 'football'))
+            notify_new_session.delay(
+                session.id, lat, lon,
+                data.get('sport_type', 'football'),
+                data['creator_id'],
+            )
 
         return jsonify(session.to_dict()), 201
     except Exception as e:
@@ -553,23 +558,32 @@ def save_notification_to_db(user_id, notif_type, title, message, session_id=None
 
 # Celery задачи
 @celery.task(name='app.notify_new_session')
-def notify_new_session(session_id, lat, lon, sport_type):
-    """Уведомление пользователям поблизости о новой сессии (в радиусе 2 км)"""
+def notify_new_session(session_id, lat, lon, sport_type, creator_id):
+    """Уведомление пользователям поблизости о новой сессии (в радиусе 2 км).
+
+    Создатель сессии исключается из рассылки: он только что сам её создал,
+    получать push «рядом появилась новая игра» о собственном событии —
+    бессмысленно и раздражает.
+    """
     from app import app as flask_app
     with flask_app.app_context():
         try:
-            # Найти пользователей с notification_location в радиусе 2 км
-            # ST_DWithin работает в метрах для geography типа
+            # Найти пользователей с notification_location в радиусе 2 км,
+            # за вычетом самого создателя сессии.
+            # ST_DWithin работает в метрах для geography типа.
             query = text("""
                 SELECT id, username FROM users
                 WHERE notification_location IS NOT NULL
+                AND id != :creator_id
                 AND ST_DWithin(
                     notification_location,
                     ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
                     2000
                 )
             """)
-            result = db.session.execute(query, {'lon': lon, 'lat': lat})
+            result = db.session.execute(query, {
+                'lon': lon, 'lat': lat, 'creator_id': creator_id,
+            })
             nearby_users = result.fetchall()
 
             sport_name = get_sport_name(sport_type)

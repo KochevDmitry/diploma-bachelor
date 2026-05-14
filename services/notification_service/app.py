@@ -18,6 +18,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
 import redis
+import requests
 import os
 import json
 import logging
@@ -41,6 +42,11 @@ db = SQLAlchemy(app)
 # Redis для pub/sub
 redis_client = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/1'))
 pubsub = redis_client.pubsub()
+
+# Адрес сервиса аутентификации: используется для верификации JWT-токена
+# при подключении WebSocket. JWT_SECRET_KEY самому сервису уведомлений
+# не выдаётся — единственное место знания о нём остаётся auth_service.
+AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://auth_service:5001')
 
 # Хранение связи socket_id -> user_id
 socket_to_user = {}
@@ -166,14 +172,46 @@ def handle_disconnect():
 
 @socketio.on('authenticate')
 def handle_authenticate(data):
-    """Аутентификация пользователя и подписка на персональные уведомления"""
-    user_id = data.get('user_id')
-    if user_id:
-        room = f'user:{user_id}'
-        join_room(room)
-        socket_to_user[request.sid] = user_id
-        logger.info(f'User {user_id} authenticated and joined room {room}')
-        emit('authenticated', {'user_id': user_id, 'room': room})
+    """Аутентификация WebSocket-соединения: клиент передаёт JWT-токен,
+    мы делегируем его проверку сервису аутентификации (token introspection,
+    RFC 7662) и берём идентификатор пользователя только из верифицированного
+    ответа. Сервису уведомлений тем самым не нужно знать JWT_SECRET_KEY —
+    единственный источник истины для подписи токенов остаётся auth_service.
+    """
+    token = (data or {}).get('token')
+    if not token:
+        logger.warning(f'Auth without token from sid={request.sid}')
+        emit('auth_error', {'error': 'token required'})
+        return
+
+    try:
+        resp = requests.get(
+            f'{AUTH_SERVICE_URL}/auth/verify',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=2,
+        )
+    except requests.RequestException as e:
+        logger.exception(f'auth_service unavailable: {e}')
+        emit('auth_error', {'error': 'auth service unavailable'})
+        return
+
+    if resp.status_code != 200:
+        logger.warning(f'Invalid token (status={resp.status_code}) from sid={request.sid}')
+        emit('auth_error', {'error': 'invalid token'})
+        return
+
+    try:
+        user_id = resp.json()['user']['id']
+    except (ValueError, KeyError):
+        logger.exception('Unexpected response shape from auth_service /auth/verify')
+        emit('auth_error', {'error': 'auth response malformed'})
+        return
+
+    room = f'user:{user_id}'
+    join_room(room)
+    socket_to_user[request.sid] = user_id
+    logger.info(f'User {user_id} authenticated and joined room {room}')
+    emit('authenticated', {'user_id': user_id, 'room': room})
 
 
 @socketio.on('subscribe_venue')

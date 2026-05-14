@@ -19,11 +19,13 @@ def test_create_session_success(client, creator):
     assert body['latitude'] == 55.75
     assert body['longitude'] == 37.61
     # Создание сессии с координатами должно дёрнуть задачу о рассылке
-    # уведомлений ближайшим пользователям.
+    # уведомлений ближайшим пользователям. Создатель должен передаваться
+    # в задачу, чтобы она могла исключить его из рассылки.
     game_app.notify_new_session.delay.assert_called_once()
     args = game_app.notify_new_session.delay.call_args.args
     assert args[1] == 55.75 and args[2] == 37.61
     assert args[3] == 'basketball'
+    assert args[4] == creator['id']
 
 
 def test_create_session_missing_creator(client):

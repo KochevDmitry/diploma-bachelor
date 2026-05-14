@@ -216,8 +216,18 @@ function App() {
 
       newSocket.on('connect', () => {
         console.log('Connected to WebSocket');
-        // Аутентификация для получения персональных уведомлений
-        newSocket.emit('authenticate', { user_id: user.id });
+        // Аутентификация для получения персональных уведомлений: шлём
+        // не user_id (его сервер проверить не может), а JWT-токен.
+        // Сервис уведомлений делегирует его проверку auth_service и
+        // извлекает идентификатор из верифицированного payload-а.
+        // Читаем токен из localStorage напрямую: он мог обновиться
+        // через refresh и быть свежее, чем переменная в стейте.
+        const token = localStorage.getItem('accessToken');
+        newSocket.emit('authenticate', { token });
+      });
+
+      newSocket.on('auth_error', (err) => {
+        console.error('WS auth_error:', err);
       });
 
       newSocket.on('connect_error', (err) => {
