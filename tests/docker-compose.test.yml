@@ -26,5 +26,21 @@ services:
       timeout: 5s
       retries: 15
 
+  # Настоящий Redis для перформанс-тестов кеша (tests/perf/test_cache.py).
+  # Обычные интеграционные тесты его НЕ используют — там подменяется на
+  # fakeredis. Отдельный контейнер на нестандартном порту 56379, чтобы не
+  # пересекаться ни с боевым Redis (docker-compose.yml), ни с локально
+  # установленным redis-server у разработчика.
+  redis_test:
+    image: redis:7-alpine
+    container_name: sportapp_redis_test
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
 volumes:
   postgres_test_data:
